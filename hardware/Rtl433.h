@@ -4,19 +4,22 @@
 
 class CRtl433 : public CDomoticzHardwareBase
 {
-public:
-	explicit CRtl433(const int ID);
-	virtual ~CRtl433();
+      public:
+	explicit CRtl433(int ID, const std::string &cmdline);
+	~CRtl433() override = default;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
 
-	bool WriteToHardware(const char *pdata, const unsigned char length);
-private:
-	volatile bool m_stoprequested;
-	boost::shared_ptr<boost::thread> m_thread;
-	boost::mutex m_pipe_mutex;
-	FILE *m_hPipe;
-
-	bool StartHardware();
-	bool StopHardware();
+      private:
+	bool StartHardware() override;
+	bool StopHardware() override;
 	void Do_Work();
-	static std::vector<std::string> ParseCSVLine(const char *input);
+	bool ParseJsonLine(const std::string &sLine);
+	bool FindField(const std::map<std::string, std::string> &data, const std::string &field);
+	bool ParseData(std::map<std::string, std::string> &data);
+
+      private:
+	std::shared_ptr<std::thread> m_thread;
+	std::mutex m_pipe_mutex;
+	std::string m_cmdline;
+	std::string m_sLastLine;
 };

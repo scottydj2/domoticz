@@ -8,11 +8,12 @@
 #define MyAppExeName "domoticz.exe"
 #define NSSM "nssm.exe"
 #define SetupBaseName   "DomoticzSetup_"
+#define SetupName   "DomoticzSetup"
 #dim Version[4]
 #expr ParseVersion("..\Release\domoticz.exe", Version[0], Version[1], Version[2], Version[3])
 #define AppVersion Str(Version[0]) + "." + Str(Version[1]) + "." + Str(Version[2]) + "." + Str(Version[3])
-#define ShortAppVersion Str(Version[0]) + "." + Str(Version[3])
-#define ShortAppVersionUnderscore Str(Version[0]) + "_" + Str(Version[3])
+#define ShortAppVersion Str(Version[0]) + "." + Str(Version[1]) + "." + Str(Version[3])
+#define ShortAppVersionUnderscore Str(Version[0]) + "_" + Str(Version[1]) + "." + Str(Version[3])
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -25,7 +26,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={pf}\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=..\..\License.txt
@@ -49,30 +50,36 @@ Name: RunAsService; Description: "Run as service"; Flags: exclusive unchecked
 
 [Files]
 Source: "..\Release\domoticz.exe"; DestDir: "{app}"; Flags: ignoreversion
+;Source: "..\Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\www\*"; DestDir: "{app}\www"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "..\..\Config\*"; DestDir: "{app}\Config"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "..\..\scripts\*"; DestDir: "{app}\scripts"; Flags: recursesubdirs createallsubdirs ignoreversion
-Source: "..\Debug\libcurl.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\Windows Libraries\OpenZwave\Release\OpenZWave.dll"; DestDir: {app}; Flags: ignoreversion;
-Source: "..\..\Manual\DomoticzManual.pdf"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\dzVents\*"; DestDir: "{app}\dzVents"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "..\Windows Libraries\openzwave\OpenZWave.dll"; DestDir: {app}; Flags: ignoreversion;
 Source: "..\..\History.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".\nssm.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\server_cert.pem"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
+
+Source: "..\Windows Libraries\Redist\*"; DestDir: {app}; Flags: ignoreversion
+;Needed for 64bit Source: "..\Windows Libraries\Redist\vcruntime140_1.dll"; DestDir: {app}; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Domoticz"; Filename: "{app}\{#MyAppExeName}"; Parameters: "{code:GetParams}" ; Tasks: RunAsApp; 
 ;Name: "{group}\Start Domoticz service"; Filename: "sc"; Parameters: "start {#MyAppName}"; Tasks: RunAsService; 
 ;Name: "{group}\Stop Domoticz service"; Filename: "sc"; Parameters: "stop {#MyAppName}"; Tasks: RunAsService; 
-Name: "{group}\DomoticzManual.pdf"; Filename: "{app}\DomoticzManual.pdf"; 
 Name: "{group}\{cm:ProgramOnTheWeb,Domoticz}"; Filename: "{#MyAppURL}";
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"; 
 Name: "{commonstartup}\Domoticz"; Filename: "{app}\{#MyAppExeName}"; Parameters: "-startupdelay 10 {code:GetParams}" ; Tasks: RunAsApp\startupicon
 Name: "{commondesktop}\Domoticz"; Filename: "{app}\{#MyAppExeName}"; Parameters: "{code:GetParams}" ; Tasks: RunAsApp\desktopicon
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\Domoticz"; Filename: "{app}\{#MyAppExeName}"; Tasks: RunAsApp\quicklaunchicon
 
+[Setup]
+UninstallDisplayIcon={app}\{#MyAppExeName}
+
 [Run]
 ;Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, "&", "&&")}}"; Flags: nowait postinstall skipifsilent runascurrentuser; Tasks: RunAsApp
-Filename: "{app}\{#NSSM}"; Parameters: "install {#MyAppName} ""{app}\{#MyAppExeName}"" ""{code:GetParamsService}"""; Flags: runhidden; Tasks: RunAsService
+Filename: "{app}\{#NSSM}"; Parameters: "install {#MyAppName} ""{app}\{#MyAppExeName}"" ""{code:GetParams}"""; Flags: runhidden; Tasks: RunAsService
+Filename: "{app}\{#NSSM}"; Parameters: "set {#MyAppName} DependOnService RpcSS LanmanWorkstation"; Flags: runhidden; Tasks: RunAsService
 Filename: "{sys}\net.exe"; Parameters: "start {#MyAppName}"; Flags: runhidden; Tasks: RunAsService
 
 [Dirs]
@@ -84,19 +91,41 @@ Name: "{app}\log"; Permissions: everyone-full
 [PostCompile]
 Name: "S:\Domoticz\msbuild\WindowsInstaller\makedist.bat"; Flags: cmdprompt redirectoutput
 
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\scripts\dzVents\documentation"
+Type: filesandordirs; Name: "{app}\scripts\dzVents\runtime"
+
+
 [Code]
 var
   ConfigPage: TInputQueryWizardPage;
   LogConfigPage: TInputDirWizardPage;
+  LogNoLogButton: TRadioButton;
+  LogUseLogButton: TRadioButton;
+  LogOldNextButtonOnClick: TNotifyEvent;
  
 function GetParams(Value: string): string;
 begin
-  Result := '-www '+ConfigPage.Values[0]+' -sslwww '+ConfigPage.Values[1];
+  Result := '-www ' + ConfigPage.Values[0] + ' -sslwww ' + ConfigPage.Values[1];
+  if (LogUseLogButton.Checked) then
+    begin
+      Result := Result + ' -log """' + LogConfigPage.Values[0] + '"""';
+    end;
 end;
 
-function GetParamsService(Value: string): string;
+{ WORKAROUND }
+{ Checkboxes and Radio buttons created on runtime do }
+{ not scale their height automatically. }
+{ See https://stackoverflow.com/q/30469660/850848 }
+procedure ScaleFixedHeightControl(Control: TButtonControl);
 begin
-  Result := '-www '+ConfigPage.Values[0]+' -sslwww '+ConfigPage.Values[1];
+  Control.Height := ScaleY(Control.Height);
+end;
+
+procedure UseLogButtonClick(Sender: TObject);
+begin
+  LogConfigPage.Edits[0].Enabled := LogUseLogButton.Checked;
+  LogConfigPage.Buttons[0].Enabled := LogUseLogButton.Checked;
 end;
 
 procedure InitializeWizard;
@@ -122,8 +151,36 @@ begin
     False, 'New Folder');
   LogConfigPage.Add('');
 
+  LogNoLogButton := TRadioButton.Create(WizardForm);
+  LogNoLogButton.Caption := 'No external Log';
+  LogNoLogButton.Checked := True;
+  LogNoLogButton.Parent :=LogConfigPage.Surface;
+  LogNoLogButton.Top := LogConfigPage.Edits[0].Top;
+  LogNoLogButton.OnClick := @UseLogButtonClick;
+  ScaleFixedHeightControl(LogNoLogButton);
+  
+  LogUseLogButton := TRadioButton.Create(WizardForm);
+  LogUseLogButton.Caption := 'Use external Log';
+  LogUseLogButton.Parent := LogConfigPage.Surface;
+  LogUseLogButton.Top :=
+    LogNoLogButton.Top + LogNoLogButton.Height + ScaleY(8);
+  LogUseLogButton.OnClick := @UseLogButtonClick;
+  ScaleFixedHeightControl(LogNoLogButton);
+
+  LogConfigPage.Buttons[0].Top :=
+    LogConfigPage.Buttons[0].Top +
+    ((LogUseLogButton.Top + LogUseLogButton.Height + ScaleY(8)) -
+      LogConfigPage.Edits[0].Top);
+  LogConfigPage.Edits[0].Top :=
+    LogUseLogButton.Top + LogUseLogButton.Height + ScaleY(8);
+  LogConfigPage.Edits[0].Left := LogConfigPage.Edits[0].Left + ScaleX(16);
+  LogConfigPage.Edits[0].Width := LogConfigPage.Edits[0].Width - ScaleX(16);
+  LogConfigPage.Edits[0].TabOrder := LogUseLogButton.TabOrder + 1;
+  LogConfigPage.Buttons[0].TabOrder := LogConfigPage.Edits[0].TabOrder + 1;
+
+  UseLogButtonClick(nil);
+
   LogConfigPage.Values[0] := WizardDirValue+'\log';
- 
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

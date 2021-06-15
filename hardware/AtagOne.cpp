@@ -1,15 +1,15 @@
 #include "stdafx.h"
 #include "AtagOne.h"
 #include "../main/Helper.h"
-#include "../main/Logger.h"
 #include "hardwaretypes.h"
 #include "../main/localtime_r.h"
+#include "../main/Logger.h"
 #include "../main/WebServerHelper.h"
 #include "../main/RFXtrx.h"
 #include "../main/SQLHelper.h"
 #include "../httpclient/HTTPClient.h"
 #include "../main/mainworker.h"
-#include "../json/json.h"
+#include "../main/json_helper.h"
 
 extern http::server::CWebServerHelper m_webservers;
 
@@ -60,10 +60,10 @@ std::string ReadFile(std::string filename)
 }
 #endif
 
-CAtagOne::CAtagOne(const int ID, const std::string &Username, const std::string &Password, const int Mode1, const int Mode2, const int Mode3, const int Mode4, const int Mode5, const int Mode6)
+CAtagOne::CAtagOne(const int ID, const std::string &Username, const std::string &Password, const int Mode1, const int Mode2, const int Mode3, const int Mode4, const int Mode5, const int Mode6):
+m_UserName(Username),
+m_Password(Password)
 {
-	m_UserName = Username;
-	m_Password = Password;
 	stdstring_trim(m_UserName);
 	stdstring_trim(m_Password);
 	m_HwdID=ID;
@@ -74,11 +74,7 @@ CAtagOne::CAtagOne(const int ID, const std::string &Username, const std::string 
 	Init();
 }
 
-CAtagOne::~CAtagOne(void)
-{
-}
-
-void CAtagOne::SetModes(const int Mode1, const int Mode2, const int Mode3, const int Mode4, const int Mode5, const int Mode6)
+void CAtagOne::SetModes(const int Mode1, const int /*Mode2*/, const int /*Mode3*/, const int /*Mode4*/, const int /*Mode5*/, const int /*Mode6*/)
 {
 	m_OutsideTemperatureIdx = Mode1;
 }
@@ -87,27 +83,30 @@ void CAtagOne::Init()
 {
 	m_ThermostatID = "";
 	m_bDoLogin = true;
-	m_stoprequested = false;
 }
 
 bool CAtagOne::StartHardware()
 {
+	RequestStart();
+
 	Init();
+
 	m_LastMinute = -1;
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CAtagOne::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted=true;
 	sOnConnected(this);
-	return (m_thread!=NULL);
+	return (m_thread != nullptr);
 }
 
 bool CAtagOne::StopHardware()
 {
-	if (m_thread!=NULL)
+	if (m_thread)
 	{
-		assert(m_thread);
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
+		m_thread.reset();
 	}
     m_bIsStarted=false;
     return true;
@@ -127,7 +126,7 @@ std::string GetFirstDeviceID(const std::string &shtml)
 	if (tpos == std::string::npos)
 		return "";
 	sResult = sResult.substr(tpos + 2);
-	tpos = sResult.find("\"");
+	tpos = sResult.find('"');
 	if (tpos == std::string::npos)
 		return "";
 	sResult = sResult.substr(0, tpos);
@@ -145,14 +144,14 @@ std::string CAtagOne::GetRequestVerificationToken(const std::string &url)
 
 	if (!HTTPClient::GET(sURL, sResult))
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Error requesting token!");
+		Log(LOG_ERROR, "Error requesting token!");
 		return "";
 	}
 #ifdef DEBUG_AtagOneThermostat
 	SaveString2Disk(sResult, "E:\\AtagOne_requesttoken.txt");
 #endif
 #endif
-	// <input name="__RequestVerificationToken" type="hidden" value="lFVlMZlt2-YJKAwZWS_K_p3gsQWjZOvBNBZ3lM8io_nFGFL0oRsj4YwQUdqGfyrEqGwEUPmm0FgKH1lPWdk257tuTWQ1" /> 
+	// <input name="__RequestVerificationToken" type="hidden" value="lFVlMZlt2-YJKAwZWS_K_p3gsQWjZOvBNBZ3lM8io_nFGFL0oRsj4YwQUdqGfyrEqGwEUPmm0FgKH1lPWdk257tuTWQ1" />
 	size_t tpos = sResult.find("__RequestVerificationToken");
 	if (tpos == std::string::npos)
 	{
@@ -168,7 +167,7 @@ std::string CAtagOne::GetRequestVerificationToken(const std::string &url)
 	if (tpos == std::string::npos)
 		return "";
 	sResult = sResult.substr(tpos+7);
-	tpos = sResult.find("\"");
+	tpos = sResult.find('"');
 	if (tpos == std::string::npos)
 		return "";
 	sResult = sResult.substr(0,tpos);
@@ -196,7 +195,7 @@ bool CAtagOne::Login()
 			m_bDoLogin = false;
 			return true;
 		}
-		_log.Log(LOG_ERROR, "AtagOne: Error login!");
+		Log(LOG_ERROR, "Error login!");
 		return false;
 	}
 
@@ -217,7 +216,7 @@ bool CAtagOne::Login()
 	sURL = ATAGONE_URL_LOGIN;
 	if (!HTTPClient::POST(sURL, szPostdata, ExtraHeaders, sResult))
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Error login!");
+		Log(LOG_ERROR, "Error login!");
 		return false;
 	}
 
@@ -230,7 +229,7 @@ bool CAtagOne::Login()
 	m_ThermostatID = GetFirstDeviceID(sResult);
 	if (m_ThermostatID.empty())
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Error getting device_id!");
+		Log(LOG_ERROR, "Error getting device_id!");
 		return false;
 	}
 	m_bDoLogin = false;
@@ -250,14 +249,13 @@ void CAtagOne::Logout()
 
 void CAtagOne::Do_Work()
 {
-	_log.Log(LOG_STATUS,"AtagOne: Worker started...");
+	Log(LOG_STATUS,"Worker started...");
 	int sec_counter = AtagOne_POLL_INTERVAL-5;
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat=mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 		if (sec_counter % AtagOne_POLL_INTERVAL == 0)
 		{
@@ -265,7 +263,7 @@ void CAtagOne::Do_Work()
 			GetMeterDetails();
 		}
 	}
-	_log.Log(LOG_STATUS,"AtagOne: Worker stopped...");
+	Log(LOG_STATUS,"Worker stopped...");
 }
 
 bool CAtagOne::GetOutsideTemperatureFromDomoticz(float &tvalue)
@@ -281,7 +279,6 @@ bool CAtagOne::GetOutsideTemperatureFromDomoticz(float &tvalue)
 	if (tsize < 1)
 		return false;
 
-	Json::Value::const_iterator itt;
 	Json::ArrayIndex rsize = tempjson["result"].size();
 	if (rsize < 1)
 		return false;
@@ -293,7 +290,7 @@ bool CAtagOne::GetOutsideTemperatureFromDomoticz(float &tvalue)
 	return true;
 }
 
-bool CAtagOne::WriteToHardware(const char *pdata, const unsigned char length)
+bool CAtagOne::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 {
 	const tRBUF *pCmd = reinterpret_cast<const tRBUF *>(pdata);
 	if (pCmd->LIGHTING2.packettype == pTypeLighting2)
@@ -319,19 +316,16 @@ static std::string GetHTMLPageValue(const std::string &hpage, const std::string 
 		m_labels.push_back(svalueLng1);
 	if (!svalueLng2.empty())
 		m_labels.push_back(svalueLng2);
-	std::vector<std::string >::const_iterator itt;
 	// HTML structure of values in page.
 	//     <label class="col-xs-6 control-label">Apparaat alias</label>
 	//     <div class="col-xs-6">
 	//         <p class="form-control-static">CV-ketel</p>
-	//     </div> 
-	size_t tpos;
-	std::string sstring;
-	for (itt = m_labels.begin(); itt != m_labels.end(); ++itt)
+	//     </div>
+	for (const auto &label : m_labels)
 	{
 		std::string sresult = hpage;
-		sstring = ">" + *itt + "</label>";
-		tpos = sresult.find(sstring);
+		std::string sstring = ">" + label + "</label>";
+		size_t tpos = sresult.find(sstring);
 		if (tpos==std::string::npos)
 			continue;
 		sresult = sresult.substr(tpos + sstring.size());
@@ -339,11 +333,11 @@ static std::string GetHTMLPageValue(const std::string &hpage, const std::string 
 		if (tpos == std::string::npos)
 			continue;
 		sresult = sresult.substr(tpos+2);
-		tpos = sresult.find(">");
+		tpos = sresult.find('>');
 		if (tpos == std::string::npos)
 			continue;
 		sresult = sresult.substr(tpos + 1);
-		tpos = sresult.find("<");
+		tpos = sresult.find('<');
 		if (tpos == std::string::npos)
 			continue;
 		sresult = sresult.substr(0,tpos);
@@ -374,7 +368,7 @@ void CAtagOne::GetMeterDetails()
 	std::string sURL = std::string(ATAGONE_URL_DIAGNOSTICS) + "?deviceId=" + CURLEncode::URLEncode(m_ThermostatID);
 	if (!HTTPClient::GET(sURL, sResult))
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Error getting thermostat data!");
+		Log(LOG_ERROR, "Error getting thermostat data!");
 		m_bDoLogin = true;
 		return;
 	}
@@ -389,7 +383,7 @@ void CAtagOne::GetMeterDetails()
 	sret = GetHTMLPageValue(sResult, "Kamertemperatuur", "Room temperature", true);
 	if (sret.empty())
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Invalid/no data received...");
+		Log(LOG_ERROR, "Invalid/no data received...");
 		return;
 	}
 	root["roomTemperature"] = static_cast<float>(atof(sret.c_str()));
@@ -416,7 +410,7 @@ void CAtagOne::GetMeterDetails()
 	stdreplace(sURL, "{0}", CURLEncode::URLEncode(m_ThermostatID));
 	if (!HTTPClient::GET(sURL, sResult))
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Error getting target setpoint data!");
+		Log(LOG_ERROR, "Error getting target setpoint data!");
 		m_bDoLogin = true;
 		return;
 	}
@@ -425,16 +419,15 @@ void CAtagOne::GetMeterDetails()
 #endif
 #endif
 	Json::Value root2;
-	Json::Reader jReader;
-	bool ret = jReader.parse(sResult, root2);
+	bool ret = ParseJSon(sResult, root2);
 	if ((!ret) || (!root2.isObject()))
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Invalid/no data received...");
+		Log(LOG_ERROR, "Invalid/no data received...");
 		return;
 	}
 	if (root2["targetTemp"].empty())
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Invalid/no data received...");
+		Log(LOG_ERROR, "Invalid/no data received...");
 		return;
 	}
 	root["targetTemperature"] = static_cast<float>(atof(root2["targetTemp"].asString().c_str()));
@@ -492,31 +485,31 @@ void CAtagOne::GetMeterDetails()
 	{
 		std::string actSource = root["currentMode"].asString();
 		bool bIsScheduleMode = (actSource == "schedule_active");
-		SendSwitch(1, 1, 255, bIsScheduleMode, 0, "Thermostat Schedule Mode");
+		SendSwitch(1, 1, 255, bIsScheduleMode, 0, "Thermostat Schedule Mode", m_Name);
 	}
 	if (!root["flameStatus"].empty())
 	{
-		SendSwitch(2, 1, 255, root["flameStatus"].asBool(), 0, "Flame Status");
+		SendSwitch(2, 1, 255, root["flameStatus"].asBool(), 0, "Flame Status", m_Name);
 	}
-	
+
 }
 
 void CAtagOne::SetSetpoint(const int idx, const float temp)
 {
 	if (idx != 1)
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Currently only Room Temperature Setpoint allowed!");
+		Log(LOG_ERROR, "Currently only Room Temperature Setpoint allowed!");
 		return;
 	}
 
-	int rtemp = int(temp*2.0f);
-	float dtemp = float(rtemp) / 2.0f;
+	int rtemp = int(temp * 2.0F);
+	float dtemp = float(rtemp) / 2.0F;
 	if (
 		(dtemp<ATAGONE_TEMPERATURE_MIN) ||
 		(dtemp>ATAGONE_TEMPERATURE_MAX)
 		)
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Temperature should be between %d and %d", ATAGONE_TEMPERATURE_MIN, ATAGONE_TEMPERATURE_MAX);
+		Log(LOG_ERROR, "Temperature should be between %d and %d", ATAGONE_TEMPERATURE_MIN, ATAGONE_TEMPERATURE_MAX);
 		return;
 	}
 	char szTemp[20];
@@ -539,16 +532,16 @@ void CAtagOne::SetSetpoint(const int idx, const float temp)
 	std::string sResult;
 	if (!HTTPClient::POST(sURL, szPostdata, ExtraHeaders, sResult))
 	{
-		_log.Log(LOG_ERROR, "AtagOne: Error setting Setpoint!");
+		Log(LOG_ERROR, "Error setting Setpoint!");
 		return;
 	}
 #ifdef DEBUG_AtagOneThermostat
 	SaveString2Disk(sResult, "E:\\AtagOne_setsetpoint.txt");
 #endif
-	SendSetPointSensor(0,0,idx, dtemp, "");
+	SendSetPointSensor(0,0, (const uint8_t)idx, dtemp, "");
 }
 
-void CAtagOne::SetPauseStatus(const bool bIsPause)
+void CAtagOne::SetPauseStatus(const bool /*bIsPause*/)
 {
 }
 
@@ -560,7 +553,7 @@ void CAtagOne::SendOutsideTemperature()
 	SetOutsideTemp(temp);
 }
 
-void CAtagOne::SetOutsideTemp(const float temp)
+void CAtagOne::SetOutsideTemp(const float /*temp*/)
 {
 }
 

@@ -6,7 +6,7 @@
 #include "../main/localtime_r.h"
 //#include "../main/mainworker.h"
 #include "../hardware/hardwaretypes.h"
-#include "../json/json.h"
+#include "../main/json_helper.h"
 
 #include <sstream>
 
@@ -44,65 +44,49 @@
 #define RESET_COUNT "reset_counter"
 
 Ec3kMeterTCP::Ec3kMeterTCP(const int ID, const std::string &IPAddress, const unsigned short usIPPort) :
-m_szIPAddress(IPAddress)
+	m_szIPAddress(IPAddress)
 {
 	m_HwdID=ID;
-	m_bDoRestart=false;
-	m_stoprequested=false;
 	m_usIPPort=usIPPort;
 	m_retrycntr = RETRY_DELAY;
 	m_limiter = new(Ec3kLimiter);
 }
 
-Ec3kMeterTCP::~Ec3kMeterTCP(void)
-{
-}
-
 bool Ec3kMeterTCP::StartHardware()
 {
-	m_stoprequested=false;
-	m_bDoRestart=false;
+	RequestStart();
 
 	//force connect the next first time
 	m_retrycntr=RETRY_DELAY;
 	m_bIsStarted=true;
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&Ec3kMeterTCP::Do_Work, this)));
-	return (m_thread!=NULL);
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
+	return (m_thread != nullptr);
 }
 
 bool Ec3kMeterTCP::StopHardware()
 {
-	m_stoprequested=true;
 	try {
 		if (m_thread)
 		{
+			RequestStop();
 			m_thread->join();
+			m_thread.reset();
 		}
 	}
 	catch (...)
 	{
 		//Don't throw from a Stop command
 	}
-	if (isConnected())
-	{
-		try {
-			disconnect();
-		} catch(...)
-		{
-			//Don't throw from a Stop command
-		}
-	}
-
 	m_bIsStarted=false;
 	return true;
 }
 
 void Ec3kMeterTCP::OnConnect()
 {
-	_log.Log(LOG_STATUS,"Ec3kMeter: connected to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
-	m_bDoRestart=false;
+	Log(LOG_STATUS,"connected to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	m_bIsStarted=true;
 
 	sOnConnected(this);
@@ -110,48 +94,29 @@ void Ec3kMeterTCP::OnConnect()
 
 void Ec3kMeterTCP::OnDisconnect()
 {
-	_log.Log(LOG_STATUS,"Ec3kMeter: disconnected");
+	Log(LOG_STATUS,"disconnected");
 }
 
 void Ec3kMeterTCP::Do_Work()
 {
-	bool bFirstTime=true;
 	int sec_counter = 0;
-	while (!m_stoprequested)
+	connect(m_szIPAddress,m_usIPPort);
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 
 		if (sec_counter  % 12 == 0) {
-			m_LastHeartbeat=mytime(NULL);
-		}
-
-		if (bFirstTime)
-		{
-			bFirstTime=false;
-			connect(m_szIPAddress,m_usIPPort);
-		}
-		else
-		{
-			if ((m_bDoRestart) && (sec_counter % 30 == 0))
-			{
-				connect(m_szIPAddress,m_usIPPort);
-			}
-			update();
+			m_LastHeartbeat = mytime(nullptr);
 		}
 	}
-	_log.Log(LOG_STATUS,"Ec3kMeter: TCP/IP Worker stopped...");
-} 
+	terminate();
+
+	Log(LOG_STATUS,"TCP/IP Worker stopped...");
+}
 
 void Ec3kMeterTCP::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	ParseData(pData,length);
-}
-
-void Ec3kMeterTCP::OnError(const std::exception e)
-{
-	_log.Log(LOG_ERROR,"Ec3kMeter: Error: %s",e.what());
 }
 
 void Ec3kMeterTCP::OnError(const boost::system::error_code& error)
@@ -164,22 +129,22 @@ void Ec3kMeterTCP::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		Log(LOG_ERROR, "Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||
 		(error == boost::asio::error::connection_reset)
 		)
 	{
-		_log.Log(LOG_STATUS, "Ec3kMeter: Connection reset!");
+		Log(LOG_STATUS, "Connection reset!");
 	}
 	else
-		_log.Log(LOG_ERROR, "Ec3kMeter: %s", error.message().c_str());
+		Log(LOG_ERROR, "%s", error.message().c_str());
 }
 
-bool Ec3kMeterTCP::WriteToHardware(const char *pdata, const unsigned char length)
+bool Ec3kMeterTCP::WriteToHardware(const char* /*pdata*/, const unsigned char /*length*/)
 {
-	if (!mIsConnected)
+	if (!isConnected())
 	{
 		return false;
 	}
@@ -195,55 +160,54 @@ void Ec3kMeterTCP::ParseData(const unsigned char *pData, int Len)
 	// Validty check on the received json
 
 	Json::Value root;
-	Json::Reader jReader;
 
-	bool ret = jReader.parse(buffer, root);
+	bool ret = ParseJSon(buffer, root);
 	if ((!ret) || (!root.isObject()))
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: invalid data received!");
+		Log(LOG_ERROR, "invalid data received!");
 		return;
 	}
 	if (root[SENSOR_ID].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: id not found in telegram");
+		Log(LOG_ERROR, "id not found in telegram");
 		return;
 	}
 	if (root[DATA].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: data not found in telegram");
+		Log(LOG_ERROR, "data not found in telegram");
 		return;
 	}
 
 	Json::Value data = root["data"];
 	if (data[WS].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: energy (ws) not found in telegram");
+		Log(LOG_ERROR, "energy (ws) not found in telegram");
 		return;
 	}
 
 	if (data[W_CURRENT].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: current consumption not found in telegram");
+		Log(LOG_ERROR, "current consumption not found in telegram");
 		return;
 	}
 	if (data[W_MAX].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: maximum consumption not found in telegram");
+		Log(LOG_ERROR, "maximum consumption not found in telegram");
 		return;
 	}
 	if (data[TIME_ON].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: time on not found in telegram");
+		Log(LOG_ERROR, "time on not found in telegram");
 		return;
 	}
 	if (data[TIME_TOTAL].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: total time not found in telegram");
+		Log(LOG_ERROR, "total time not found in telegram");
 		return;
 	}
 	if (data[RESET_COUNT].empty() == true)
 	{
-		_log.Log(LOG_ERROR, "Ec3kMeter: reset count not found in telegram");
+		Log(LOG_ERROR, "reset count not found in telegram");
 		return;
 	}
 
@@ -255,39 +219,35 @@ void Ec3kMeterTCP::ParseData(const unsigned char *pData, int Len)
 	int id;
 	ssId >> id;
 
-	// update only when the update interval has elapsed 
+	// update only when the update interval has elapsed
 	if (m_limiter->update(id))
 	{
-		int ws = data[WS].asInt();
+		double ws = data[WS].asDouble();
 		float w_current = data[W_CURRENT].asFloat();
 		float w_max = data[W_MAX].asFloat();
-		int s_time_on = data[TIME_ON].asInt();
-		int s_time_total = data[TIME_TOTAL].asInt();
-		int reset_count = data[RESET_COUNT].asInt();
+		//int s_time_on = data[TIME_ON].asInt();
+		//int s_time_total = data[TIME_TOTAL].asInt();
+		//int reset_count = data[RESET_COUNT].asInt();
 
 		// create suitable default names and send data
 
 		std::stringstream sensorNameKwhSS;
 		sensorNameKwhSS << "EC3K meter " << std::hex << id << " Usage";
 		const std::string sensorNameKwh = sensorNameKwhSS.str();
-		SendKwhMeter(id, 1, 255, w_current, (double)ws / 3600 / 1000, sensorNameKwh);
+		SendKwhMeter(id, 1, 255, w_current, ((ws / 3600.0) / 1000.0), sensorNameKwh);
 
 		std::stringstream sensorNameWMaxSS;
 		sensorNameWMaxSS << "EC3K meter " << std::hex << id << " maximum";
 		const std::string sensorNameWMax = sensorNameWMaxSS.str();
-		SendWattMeter(id, 2, 255, w_max, sensorNameWMax);
+		SendWattMeter((uint8_t)id, 2, 255, w_max, sensorNameWMax);
 
 		// TODO: send times + reset_count?
 	}
 }
 
-Ec3kLimiter::Ec3kLimiter(void)
+Ec3kLimiter::Ec3kLimiter()
 {
-  no_meters = 0;
-}
-
-Ec3kLimiter::~Ec3kLimiter(void)
-{
+	no_meters = 0;
 }
 
 bool Ec3kLimiter::update(int id)
@@ -298,20 +258,18 @@ bool Ec3kLimiter::update(int id)
 		if (meters[i].id == id)
 		{
 			// Allow update after at least update interval  seconds
-			if ((time(NULL) - meters[i].last_update) >= EC3K_UPDATE_INTERVAL)
+			if ((time(nullptr) - meters[i].last_update) >= EC3K_UPDATE_INTERVAL)
 			{
-				meters[i].last_update = time(NULL);
+				meters[i].last_update = time(nullptr);
 				return true;
 			}
-			else
-			{
-				return false;
-			}
+
+			return false;
 		}
 	}
 	// Store new meter and allow update
 	meters[no_meters].id = id;
-	meters[no_meters].last_update = time(NULL);
+	meters[no_meters].last_update = time(nullptr);
 	no_meters++;
 	return true;
 }

@@ -24,46 +24,28 @@ History :
 
 #include "ASyncSerial.h"
 #include "TeleinfoBase.h"
-#define TELEINFO_PARITY            boost::asio::serial_port_base::parity::even
-#define TELEINFO_CARACTER_SIZE      7
-#define TELEINFO_FLOW_CONTROL      boost::asio::serial_port_base::flow_control::none
-#define TELEINFO_STOP_BITS         boost::asio::serial_port_base::stop_bits::one
+#define TELEINFO_PARITY boost::asio::serial_port_base::parity::even
+#define TELEINFO_CARACTER_SIZE 7
+#define TELEINFO_FLOW_CONTROL boost::asio::serial_port_base::flow_control::none
+#define TELEINFO_STOP_BITS boost::asio::serial_port_base::stop_bits::one
 
 class CTeleinfoSerial : public CTeleinfoBase, AsyncSerial
 {
-	public:
+      public:
+	CTeleinfoSerial(int ID, const std::string &devname, int datatimeout, unsigned int baud_rate, bool disable_crc, int ratelimit);
+	~CTeleinfoSerial() override;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
 
-		CTeleinfoSerial(const int ID, const std::string& devname, const int datatimeout, unsigned int baud_rate,
-			const bool disable_crc, const int ratelimit);
-		~CTeleinfoSerial();
-		std::string m_szSerialPort;
+      private:
+	bool StartHardware() override;
+	bool StopHardware() override;
+	void Init();
+	void readCallback(const char *data, size_t len);
 
-		bool WriteToHardware(const char *pdata, const unsigned char length);
-
-	private:
-		Teleinfo teleinfo;
-		bool StartHardware();
-		bool StopHardware();
-		/**
-		 * Read callback, stores data in the buffer
-		 */
-
-		void readCallback(const char *data, size_t len);
-
-		unsigned int m_iBaudRate;
-		bool m_bDisableCRC;
-		boost::asio::serial_port_base::parity m_iOptParity;
-		boost::asio::serial_port_base::character_size m_iOptCsize;
-		boost::asio::serial_port_base::flow_control m_iOptFlow;
-		boost::asio::serial_port_base::stop_bits m_iOptStop;
-
-		unsigned int m_counter;
-
-		void Init();
-		void MatchLine();
-		void ParseData(const char *pData, int Len);
-		bool isCheckSumOk(int &isMode1);
-
-		char m_buffer[1024];
-		int m_bufferpos;
+      private:
+	std::string m_szSerialPort;
+	boost::asio::serial_port_base::parity m_iOptParity;
+	boost::asio::serial_port_base::character_size m_iOptCsize;
+	boost::asio::serial_port_base::flow_control m_iOptFlow;
+	boost::asio::serial_port_base::stop_bits m_iOptStop;
 };

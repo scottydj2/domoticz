@@ -2,10 +2,10 @@
 #include "stdafx.h"
 #ifdef WIN32
 #include "1WireForWindows.h"
+#include "../../main/json_helper.h"
 #include "../../main/Logger.h"
-#include <boost/thread.hpp>
 #include <boost/optional.hpp>
-
+#include <WS2tcpip.h>
 
 #define _1WIRE_SERVICE_PORT "1664"
 
@@ -28,9 +28,7 @@ SOCKET ConnectToService()
 {
    // Connection
    SOCKET theSocket = INVALID_SOCKET;
-   struct addrinfo *result = NULL,
-      *ptr = NULL,
-      hints;
+   struct addrinfo *result = nullptr, *ptr = nullptr, hints;
 
    ZeroMemory(&hints,sizeof(hints));
    hints.ai_family = AF_UNSPEC;
@@ -46,7 +44,7 @@ SOCKET ConnectToService()
    }
 
    // Attempt to connect to an address until one succeeds
-   for(ptr=result;ptr!=NULL;ptr=ptr->ai_next)
+   for (ptr = result; ptr != nullptr; ptr = ptr->ai_next)
    {
       // Create a SOCKET for connecting to server
       theSocket = socket(ptr->ai_family,ptr->ai_socktype,ptr->ai_protocol);
@@ -92,7 +90,7 @@ void DisconnectFromService(SOCKET theSocket)
    closesocket(theSocket);
 }
 
-bool Send(SOCKET theSocket,std::string requestToSend)
+bool Send(SOCKET theSocket, const std::string &requestToSend)
 {
    // Send message size
    size_t requestSize = requestToSend.length();
@@ -124,7 +122,7 @@ std::string Receive(SOCKET theSocket)
    return answer;
 }
 
-std::string SendAndReceive(SOCKET theSocket,std::string requestToSend)
+std::string SendAndReceive(SOCKET theSocket,const std::string &requestToSend)
 {
    if (!Send(theSocket,requestToSend))
       return "";
@@ -132,26 +130,27 @@ std::string SendAndReceive(SOCKET theSocket,std::string requestToSend)
    return Receive(theSocket);
 }
 
-std::string C1WireForWindows::SendAndReceive(std::string requestToSend) const
+std::string C1WireForWindows::SendAndReceive(const std::string &requestToSend) const
 {
    // SendAndReceive can be called by 2 different thread contexts : writeData and GetDevices
    // So we have to set protection
-   boost::lock_guard<boost::mutex> locker(*(const_cast<boost::mutex*>(&m_SocketMutex)));
+   std::lock_guard<std::mutex> locker(*(const_cast<std::mutex*>(&m_SocketMutex)));
 
    return ::SendAndReceive(m_Socket,requestToSend);
 }
 
+//Giz: To Author, please rewrite to use this without boost!
 bool C1WireForWindows::IsAvailable()
 {
 #ifdef _DEBUG
 	return false;
-#endif
+#else
    static boost::optional<bool> IsAvailable;
 
    if (IsAvailable.is_initialized())
       return IsAvailable.get();
 
-   // Make a connection only to know if 1-wire is avalaible
+   // Make a connection only to know if 1-wire is available
    SOCKET theSocket = ConnectToService();
    if (theSocket == INVALID_SOCKET)
    {
@@ -162,10 +161,9 @@ bool C1WireForWindows::IsAvailable()
    // Request
    Json::Value reqRoot;
    reqRoot["IsAvailable"]="";
-   Json::FastWriter writer;
 
    // Send request and wait for answer
-   std::string answer = ::SendAndReceive(theSocket,writer.write(reqRoot));
+   std::string answer = ::SendAndReceive(theSocket, JSonToRawString(reqRoot));
 
    // Answer processing
    if (answer.empty())
@@ -176,8 +174,7 @@ bool C1WireForWindows::IsAvailable()
    }
 
    Json::Value ansRoot;
-   Json::Reader reader;
-   if (!reader.parse(answer,ansRoot))
+   if (!ParseJSon(answer,ansRoot))
    {
       IsAvailable=false;
       DisconnectFromService(theSocket);
@@ -188,6 +185,7 @@ bool C1WireForWindows::IsAvailable()
 
    IsAvailable=ansRoot.get("Available",false).asBool();
    return IsAvailable.get();
+#endif
 }
 
 C1WireForWindows::C1WireForWindows()
@@ -214,21 +212,18 @@ void C1WireForWindows::GetDevices(/*out*/std::vector<_t1WireDevice>& devices) co
    // Request
    Json::Value reqRoot;
    reqRoot["GetDevices"]="";
-   Json::FastWriter writer;
 
    // Send request and wait for answer
-   std::string answer = SendAndReceive(writer.write(reqRoot));
+   std::string answer = SendAndReceive(JSonToRawString(reqRoot));
 
    // Answer processing
    Json::Value ansRoot;
-   Json::Reader reader;
-   if (answer.empty() || !reader.parse(answer,ansRoot))
+   if (ParseJSon(answer,ansRoot))
       return;
 
    if (!ansRoot["InvalidRequest"].isNull())
    {
-      Log(LOG_ERROR,"1-wire GetDevices : get an InvalidRequest answer with reason \"%s\"\n",
-         ansRoot.get("Reason","unknown reason").asString());
+      Log(LOG_ERROR,"1-wire GetDevices : get an InvalidRequest answer with reason \"%s\"\n", ansRoot.get("Reason","unknown reason").asString().c_str());
       return;
    }
 
@@ -252,15 +247,13 @@ Json::Value C1WireForWindows::readData(const _t1WireDevice& device,int unit) con
    Json::Value reqRoot;
    reqRoot["ReadData"]["Id"]=device.devid;
    reqRoot["ReadData"]["Unit"]=unit;
-   Json::FastWriter writer;
 
    // Send request and wait for answer
-   std::string answer = SendAndReceive(writer.write(reqRoot));
+   std::string answer = SendAndReceive(JSonToRawString(reqRoot));
 
    // Answer processing
    Json::Value ansRoot;
-   Json::Reader reader;
-   if (answer.empty() || !reader.parse(answer,ansRoot))
+   if (ParseJSon(answer,ansRoot))
       throw C1WireForWindowsReadException("invalid answer");
 
    if (!ansRoot["InvalidRequestReason"].isNull())
@@ -277,15 +270,13 @@ unsigned int C1WireForWindows::readChanelsNb(const _t1WireDevice& device) const
    // Request
    Json::Value reqRoot;
    reqRoot["ReadChanelsNb"]["Id"]=device.devid;
-   Json::FastWriter writer;
 
    // Send request and wait for answer
-   std::string answer = SendAndReceive(writer.write(reqRoot));
+   std::string answer = SendAndReceive(JSonToRawString(reqRoot));
 
    // Answer processing
    Json::Value ansRoot;
-   Json::Reader reader;
-   if (answer.empty() || !reader.parse(answer,ansRoot))
+   if (ParseJSon(answer,ansRoot))
       throw C1WireForWindowsReadException("invalid answer");
 
 
@@ -430,7 +421,7 @@ void C1WireForWindows::PrepareDevices()
 {
 }
 
-void C1WireForWindows::SetLightState(const std::string& sId,int unit,bool value, const unsigned int level)
+void C1WireForWindows::SetLightState(const std::string& sId,int unit,bool value, const unsigned int)
 {
    if (m_Socket==INVALID_SOCKET)
       return;
@@ -440,10 +431,9 @@ void C1WireForWindows::SetLightState(const std::string& sId,int unit,bool value,
    reqRoot["WriteData"]["Id"]=sId;
    reqRoot["WriteData"]["Unit"]=unit;
    reqRoot["WriteData"]["Value"]=!value;
-   Json::FastWriter writer;
 
    // Send request and wait for answer
-   SendAndReceive(writer.write(reqRoot));
+   SendAndReceive(JSonToRawString(reqRoot));
 
    // No answer processing
 }

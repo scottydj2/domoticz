@@ -2,7 +2,7 @@
 *
 Legrand MyHome / OpenWebNet USB Interface board driver for Domoticz
 Date: 05-10-2016
-Written by: Stéphane Lebrasseur
+Written by: Stï¿½phane Lebrasseur
 License: Public domain
 ************************************************************************/
 
@@ -16,17 +16,16 @@ License: Public domain
 #include "P1MeterBase.h"
 #include "hardwaretypes.h"
 #include "../main/SQLHelper.h"
-#include <string>
-#include <algorithm>
-#include <iostream>
-#include <boost/bind.hpp>
-#include <ctime>
 
+#include <algorithm>
+#include <ctime>
+#include <boost/exception/diagnostic_information.hpp>
+#include <iostream>
+#include <string>
 
 COpenWebNetUSB::COpenWebNetUSB(const int ID, const std::string& devname, unsigned int baud_rate)
 {
 	m_HwdID = ID;
-	m_stoprequested = false;
 	m_szSerialPort = devname;
 	m_iBaudRate = baud_rate;
 	m_retrycntr = RETRY_DELAY - 2;
@@ -34,45 +33,39 @@ COpenWebNetUSB::COpenWebNetUSB(const int ID, const std::string& devname, unsigne
 	m_bEnableReceive = true;
 }
 
-
-COpenWebNetUSB::~COpenWebNetUSB()
-{
-}
-
-
 bool COpenWebNetUSB::StartHardware()
 {
+	RequestStart();
+
 	m_retrycntr = RETRY_DELAY - 2; //will force reconnect first thing
 
 								   //Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&COpenWebNetUSB::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
+	return (m_thread != nullptr);
+}
 
-	return (m_thread != NULL);
-
+bool COpenWebNetUSB::StopHardware()
+{
+	if (m_thread)
+	{
+		RequestStop();
+		m_thread->join();
+		m_thread.reset();
+	}
+	m_bIsStarted = false;
 	return true;
 }
 
 void COpenWebNetUSB::Do_Work()
 {
-	while (!m_stoprequested)
+	while (!IsStopRequested(OPENWEBNET_HEARTBEAT_DELAY))
 	{
-		sleep_seconds(OPENWEBNET_HEARTBEAT_DELAY);
-		m_LastHeartbeat = mytime(NULL);
+		m_LastHeartbeat = mytime(nullptr);
 	}
-	_log.Log(LOG_STATUS, "COpenWebNetUSB: Heartbeat worker stopped...");
-}
-
-
-bool COpenWebNetUSB::StopHardware()
-{
-	m_stoprequested = true;
-	if (m_thread != NULL)
-		m_thread->join();
-	// Wait a while. The read thread might be reading. Adding this prevents a pointer error in the async serial class.
-	sleep_milliseconds(10);
 	terminate();
-	m_bIsStarted = false;
-	return true;
+
+	Log(LOG_STATUS, "Heartbeat worker stopped...");
 }
 
 /**
@@ -88,9 +81,9 @@ bool COpenWebNetUSB::WriteToHardware(const char *pdata, const unsigned char leng
 
 	int who = 0;
 	int what = 0;
-	stringstream whereStr;
-	stringstream devIdStr;
-	
+	std::stringstream whereStr;
+	std::stringstream devIdStr;
+
 	switch (subtype) {
 		case sSwitchBlindsT1:
 		case sSwitchLightT1:
@@ -105,9 +98,9 @@ bool COpenWebNetUSB::WriteToHardware(const char *pdata, const unsigned char leng
 			//Transmission broadcast (0# prefix) in ZigBee (#9 suffix), command light OFF and you want to control the UNIT 1 : * 1 * 0 * 0#01#9##
 			//Transmission broadcast (0# prefix) in ZigBee (#9 suffix), command light OFF and you want to control the all UNIT : * 1 * 0 * 0#00#9##
 			whereStr << pCmd->id * 100 + pCmd->unitcode << ZIGBEE_SUFFIX;
-			break; 
+			break;
 		default:
-			_log.Log(LOG_STATUS, "COpenWebNetUSB unknown command: packettype=%d subtype=%d", packettype, subtype);
+			Log(LOG_STATUS, "COpenWebNetUSB unknown command: packettype=%d subtype=%d", packettype, subtype);
 			return false;
 	}
 
@@ -119,33 +112,33 @@ bool COpenWebNetUSB::WriteToHardware(const char *pdata, const unsigned char leng
 				case sSwitchBlindsT1:
 				case sSwitchBlindsT2:
 					//Blinds/Window command
-					who = bt_openwebnet::WHO_AUTOMATION;
-			
+					who = WHO_AUTOMATION;
+
 					if (pCmd->cmnd == gswitch_sOff)
 					{
-						what = bt_openwebnet::AUTOMATION_WHAT_UP;
+						what = AUTOMATION_WHAT_UP;
 					}
 					else if (pCmd->cmnd == gswitch_sOn)
 					{
-						what = bt_openwebnet::AUTOMATION_WHAT_DOWN;
+						what = AUTOMATION_WHAT_DOWN;
 					}
 					else if (pCmd->cmnd == gswitch_sStop)
 					{
-						what = bt_openwebnet::AUTOMATION_WHAT_STOP;
+						what = AUTOMATION_WHAT_STOP;
 					}
 					break;
 				case sSwitchLightT1:
 				case sSwitchLightT2:
 					//Light/Switch command
-					who = bt_openwebnet::WHO_LIGHTING;
-			
+					who = WHO_LIGHTING;
+
 					if (pCmd->cmnd == gswitch_sOff)
 					{
-						what = bt_openwebnet::LIGHTING_WHAT_OFF;
+						what = LIGHTING_WHAT_OFF;
 					}
 					else if (pCmd->cmnd == gswitch_sOn)
 					{
-						what = bt_openwebnet::LIGHTING_WHAT_ON;
+						what = LIGHTING_WHAT_ON;
 					}
 					else if (pCmd->cmnd == gswitch_sSetLevel)
 					{
@@ -155,45 +148,45 @@ bool COpenWebNetUSB::WriteToHardware(const char *pdata, const unsigned char leng
 						// Set command based on level value
 						if (level == 0)
 						{
-							what = bt_openwebnet::LIGHTING_WHAT_OFF;
+							what = LIGHTING_WHAT_OFF;
 						}
 						else if (level == 255)
 						{
-							what = bt_openwebnet::LIGHTING_WHAT_ON;
+							what = LIGHTING_WHAT_ON;
 						}
 						else
 						{
 							// For dimmers we only allow level 0-99
 
 							if (level<20) {
-								what = bt_openwebnet::LIGHTING_WHAT_OFF;
+								what = LIGHTING_WHAT_OFF;
 							}
 							else if (level<30) {
-								what = bt_openwebnet::LIGHTING_WHAT_20;
+								what = LIGHTING_WHAT_20;
 							}
 							else if (level<40) {
-								what = bt_openwebnet::LIGHTING_WHAT_30;
+								what = LIGHTING_WHAT_30;
 							}
 							else if (level<50) {
-								what = bt_openwebnet::LIGHTING_WHAT_40;
+								what = LIGHTING_WHAT_40;
 							}
 							else if (level<60) {
-								what = bt_openwebnet::LIGHTING_WHAT_50;
+								what = LIGHTING_WHAT_50;
 							}
 							else if (level<70) {
-								what = bt_openwebnet::LIGHTING_WHAT_60;
+								what = LIGHTING_WHAT_60;
 							}
 							else if (level<80) {
-								what = bt_openwebnet::LIGHTING_WHAT_70;
+								what = LIGHTING_WHAT_70;
 							}
 							else if (level<90) {
-								what = bt_openwebnet::LIGHTING_WHAT_80;
+								what = LIGHTING_WHAT_80;
 							}
 							else if (level<100) {
-								what = bt_openwebnet::LIGHTING_WHAT_90;
+								what = LIGHTING_WHAT_90;
 							}
 							else {
-								what = bt_openwebnet::LIGHTING_WHAT_100;
+								what = LIGHTING_WHAT_100;
 							}
 						}
 					}
@@ -202,29 +195,29 @@ bool COpenWebNetUSB::WriteToHardware(const char *pdata, const unsigned char leng
 					break;
 			}
 			break;
-	
+
 		default:
-			_log.Log(LOG_STATUS, "COpenWebNetUSB unknown command: packettype=%d subtype=%d", packettype, subtype);
+			Log(LOG_STATUS, "COpenWebNetUSB unknown command: packettype=%d subtype=%d", packettype, subtype);
 			return false;
 	}
 
 	int used = 1;
 	if (!FindDevice(pCmd->id, pCmd->unitcode, subtype, &used)) {
-		_log.Log(LOG_ERROR, "COpenWebNetUSB: command received for unknown device : %d/%s", who, whereStr.str().c_str());
+		Log(LOG_ERROR, "command received for unknown device : %d/%s", who, whereStr.str().c_str());
 		return false;
 	}
 
 
-	stringstream whoStr;
-	stringstream whatStr;
+	std::stringstream whoStr;
+	std::stringstream whatStr;
 	whoStr << who;
 	whatStr << what;
 
-	vector<bt_openwebnet> responses;
+	std::vector<bt_openwebnet> responses;
 	bt_openwebnet request(whoStr.str(), whatStr.str(), whereStr.str(), "");
 	if (sendCommand(request, responses))
 	{
-		if (responses.size() > 0)
+		if (!responses.empty())
 		{
 			return responses.at(0).IsOKFrame();
 		}
@@ -238,8 +231,8 @@ Find OpenWebNetDevice in DB
 **/
 bool COpenWebNetUSB::FindDevice(int deviceID, int deviceUnit, int subType, int* used)
 {
-	vector<vector<string> > result;
-	
+	std::vector<std::vector<std::string> > result;
+
 	//make device ID
 	unsigned char ID1 = (unsigned char)((deviceID & 0xFF000000) >> 24);
 	unsigned char ID2 = (unsigned char)((deviceID & 0xFF0000) >> 16);
@@ -249,7 +242,7 @@ bool COpenWebNetUSB::FindDevice(int deviceID, int deviceUnit, int subType, int* 
 	char szIdx[10];
 	sprintf(szIdx, "%02X%02X%02X%02X", ID1, ID2, ID3, ID4);
 
-	if (used != NULL)
+	if (used != nullptr)
 	{
 		result = m_sql.safe_query("SELECT ID FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q') AND (Unit == %d) AND (Type==%d) AND (Subtype==%d) and Used == %d",
 			m_HwdID, szIdx, deviceUnit, pTypeGeneralSwitch, subType, *used);
@@ -260,7 +253,7 @@ bool COpenWebNetUSB::FindDevice(int deviceID, int deviceUnit, int subType, int* 
 			m_HwdID, szIdx, deviceUnit, pTypeGeneralSwitch, subType);
 	}
 
-	if (result.size() > 0)
+	if (!result.empty())
 	{
 		return true;
 	}
@@ -270,7 +263,7 @@ bool COpenWebNetUSB::FindDevice(int deviceID, int deviceUnit, int subType, int* 
 
 bool COpenWebNetUSB::writeRead(const char* command, unsigned int commandSize, bool silent)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
+	std::lock_guard<std::mutex> l(readQueueMutex);
 
 	m_readBufferSize = 0;
 	memset(m_readBuffer, 0, OPENWEBNET_SERIAL_BUFFER_SIZE);
@@ -278,7 +271,7 @@ bool COpenWebNetUSB::writeRead(const char* command, unsigned int commandSize, bo
 
 	if (!isOpen()) {
 		if (!silent) {
-			_log.Log(LOG_ERROR, "COpenWebNet writeRead error : connection not opened");
+			Log(LOG_ERROR, "COpenWebNet writeRead error : connection not opened");
 		}
 		return false;
 	}
@@ -290,14 +283,14 @@ bool COpenWebNetUSB::writeRead(const char* command, unsigned int commandSize, bo
 	return true;
 }
 
-bool COpenWebNetUSB::sendCommand(bt_openwebnet& command, vector<bt_openwebnet>& response, bool silent)
+bool COpenWebNetUSB::sendCommand(bt_openwebnet& command, std::vector<bt_openwebnet>& response, bool silent)
 {
 	m_bWriting = true;
 
 	//Try to open the Serial Port
 	try
 	{
-		_log.Log(LOG_STATUS, "COpenWebNetUSB: Using serial port: %s", m_szSerialPort.c_str());
+		Log(LOG_STATUS, "Using serial port: %s", m_szSerialPort.c_str());
 #ifndef WIN32
 		openOnlyBaud(
 			m_szSerialPort,
@@ -316,9 +309,9 @@ bool COpenWebNetUSB::sendCommand(bt_openwebnet& command, vector<bt_openwebnet>& 
 	}
 	catch (boost::exception & e)
 	{
-		_log.Log(LOG_ERROR, "COpenWebNetUSB: Error opening serial port!");
+		Log(LOG_ERROR, "Error opening serial port!");
 #ifdef _DEBUG
-		_log.Log(LOG_ERROR, "-----------------\n%s\n-----------------", boost::diagnostic_information(e).c_str());
+		Log(LOG_ERROR, "-----------------\n%s\n-----------------", boost::diagnostic_information(e).c_str());
 #else
 		(void)e;
 #endif
@@ -327,78 +320,78 @@ bool COpenWebNetUSB::sendCommand(bt_openwebnet& command, vector<bt_openwebnet>& 
 	}
 	catch (...)
 	{
-		_log.Log(LOG_ERROR, "COpenWebNetUSB: Error opening serial port!!!");
+		Log(LOG_ERROR, "Error opening serial port!!!");
 		m_bWriting = false;
 		return false;
 	}
 
-	setReadCallback(boost::bind(&COpenWebNetUSB::readCallback, this, _1, _2));
+	setReadCallback([this](auto d, auto l) { readCallback(d, l); });
 	sOnConnected(this);
 	m_bIsStarted = true;
 
-	
+
 	if (!writeRead(OPENWEBNET_COMMAND_SESSION, strlen(OPENWEBNET_COMMAND_SESSION), silent)) {
 		m_bWriting = false;
 		return false;
 	}
 
-	string responseStr((const char*)m_readBuffer, m_readBufferSize);
+	std::string responseStr((const char*)m_readBuffer, m_readBufferSize);
 	bt_openwebnet responseSession(responseStr);
-	_log.Log(LOG_STATUS, "COpenWebNet : sent=%s received=%s", OPENWEBNET_COMMAND_SESSION, responseStr.c_str());
+	Log(LOG_STATUS, "COpenWebNet : sent=%s received=%s", OPENWEBNET_COMMAND_SESSION, responseStr.c_str());
 
 	bool bCheckPassword = false;
 	if (!responseSession.IsOKFrame()) {
 		if (!silent) {
-			_log.Log(LOG_STATUS, "COpenWebNet : failed to begin session, no ACK received (%s)", responseStr.c_str());
+			Log(LOG_STATUS, "COpenWebNet : failed to begin session, no ACK received (%s)", responseStr.c_str());
 		}
 		m_bWriting = false;
 		return false;
 	}
 
-	if (!writeRead(command.frame_open.c_str(), command.frame_open.length(), silent)) {
+	if (!writeRead(command.m_frameOpen.c_str(), command.m_frameOpen.length(), silent)) {
 		m_bWriting = false;
 		return false;
 	}
 	if (!silent) {
-		_log.Log(LOG_STATUS, "COpenWebNet : sent=%s received=%s", command.frame_open.c_str(), m_readBuffer);
+		Log(LOG_STATUS, "COpenWebNet : sent=%s received=%s", command.m_frameOpen.c_str(), m_readBuffer);
 	}
 
 	if (!ParseData((char*)m_readBuffer, m_readBufferSize, response)) {
 		if (!silent) {
-			_log.Log(LOG_ERROR, "COpenWebNet : Cannot parse answer : %s", m_readBuffer);
+			Log(LOG_ERROR, "COpenWebNet : Cannot parse answer : %s", m_readBuffer);
 		}
 		m_bWriting = false;
 		return false;
 	}
 
 	if (!response.empty() && response[0].IsPwdFrame()) {
-		_log.Log(LOG_STATUS, "COpenWebNet : password required, you have to configure your gateway security settings to allow Domoticz");
+		Log(LOG_STATUS, "COpenWebNet : password required, you have to configure your gateway security settings to allow Domoticz");
 	}
 
 	m_bWriting = false;
 	return true;
 }
 
-bool COpenWebNetUSB::ParseData(char* data, int length, vector<bt_openwebnet>& messages)
+bool COpenWebNetUSB::ParseData(char* data, int length, std::vector<bt_openwebnet>& messages)
 {
-	string buffer = string(data, length);
+	std::string buffer = std::string(data, length);
 	size_t begin = 0;
-	size_t end = string::npos;
+	size_t end = std::string::npos;
 	do {
 		end = buffer.find(OPENWEBNET_END_FRAME, begin);
-		if (end != string::npos) {
+		if (end != std::string::npos) {
 			bt_openwebnet message(buffer.substr(begin, end - begin + 2));
 			messages.push_back(message);
 			begin = end + 2;
 		}
-	} while (end != string::npos);
+	} while (end != std::string::npos);
 
 	return true;
 }
 
 void COpenWebNetUSB::readCallback(const char *data, size_t len)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
+	std::lock_guard<std::mutex> l(readQueueMutex);
 	if (!m_bIsStarted)
 		return;
 

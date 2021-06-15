@@ -3,7 +3,6 @@
 #include "DomoticzHardware.h"
 
 #include <string>
-#include <vector>
 
 class CPinger : public CDomoticzHardwareBase
 {
@@ -15,34 +14,31 @@ class CPinger : public CDomoticzHardwareBase
 		time_t LastOK;
 		int SensorTimeoutSec;
 	};
-public:
-	CPinger(const int ID, const int PollIntervalsec, const int PingTimeoutms);
-	~CPinger(void);
-	bool WriteToHardware(const char *pdata, const unsigned char length);
-	void AddNode(const std::string &Name, const std::string &IPAddress, const int Timeout);
-	bool UpdateNode(const int ID, const std::string &Name, const std::string &IPAddress, const int Timeout);
-	void RemoveNode(const int ID);
+
+      public:
+	CPinger(int ID, int PollIntervalsec, int PingTimeoutms);
+	~CPinger() override;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
+	void AddNode(const std::string &Name, const std::string &IPAddress, int Timeout);
+	bool UpdateNode(int ID, const std::string &Name, const std::string &IPAddress, int Timeout);
+	void RemoveNode(int ID);
 	void RemoveAllNodes();
-	void SetSettings(const int PollIntervalsec, const int PingTimeoutms);
-	void Restart();
-private:
+	void SetSettings(int PollIntervalsec, int PingTimeoutms);
+
+      private:
 	void Do_Work();
-
-	bool StartHardware();
-	bool StopHardware();
+	bool StartHardware() override;
+	bool StopHardware() override;
 	void DoPingHosts();
-
 	void Do_Ping_Worker(const PingNode &Node);
-	void UpdateNodeStatus(const PingNode &Node, const bool bPingOK);
-
+	void UpdateNodeStatus(const PingNode &Node, bool bPingOK);
 	void ReloadNodes();
 
+      private:
 	int m_iThreadsRunning;
 	int m_iPollInterval;
 	int m_iPingTimeoutms;
 	std::vector<PingNode> m_nodes;
-	boost::shared_ptr<boost::thread> m_thread;
-	volatile bool m_stoprequested;
-	boost::mutex m_mutex;
+	std::shared_ptr<std::thread> m_thread;
+	std::mutex m_mutex;
 };
-

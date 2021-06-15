@@ -13,60 +13,61 @@
 #pragma once
 
 #include "EvohomeBase.h"
-#include <map>
-#include "../json/json.h"
 
+#include "../main/json_helper.h"
 
 class CEvohomeWeb : public CEvohomeBase
 {
 	struct zone
 	{
+		Json::Value *installationInfo;
+		Json::Value *status;
 		std::string locationId;
 		std::string gatewayId;
 		std::string systemId;
 		std::string zoneId;
-		Json::Value *installationInfo;
-		Json::Value *status;
-		Json::Value schedule;
 		std::string hdtemp;
+		Json::Value schedule;
 	};
 
 	struct temperatureControlSystem
 	{
+		std::vector<zone> zones;
+		std::vector<zone> dhw;
+		Json::Value *installationInfo;
+		Json::Value *status;
 		std::string locationId;
 		std::string gatewayId;
 		std::string systemId;
-		Json::Value *installationInfo;
-		Json::Value *status;
-		std::map<int, zone> zones;
 	};
 
 	struct gateway
 	{
-		std::string locationId;
-		std::string gatewayId;
+		std::vector<temperatureControlSystem> temperatureControlSystems;
 		Json::Value *installationInfo;
 		Json::Value *status;
-		std::map<int, temperatureControlSystem> temperatureControlSystems;
+		std::string locationId;
+		std::string gatewayId;
 	};
-
 
 	struct location
 	{
-		std::string locationId;
+		std::vector<gateway> gateways;
 		Json::Value *installationInfo;
 		Json::Value *status;
-		std::map<int, gateway> gateways;
+		std::string locationId;
 	};
-public:
-	CEvohomeWeb(const int ID, const std::string &Username, const std::string &Password, const unsigned int refreshrate, const int UseFlags, const unsigned int installation);
-	~CEvohomeWeb(void);
-	bool WriteToHardware(const char *pdata, const unsigned char length);
-private:
+
+      public:
+	CEvohomeWeb(int ID, const std::string &Username, const std::string &Password, unsigned int refreshrate, int UseFlags, unsigned int installation);
+	~CEvohomeWeb() override;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
+
+      private:
 	// base functions
 	void Init();
-	bool StartHardware();
-	bool StopHardware();
+	bool StartHardware() override;
+	bool StopHardware() override;
 	void Do_Work();
 
 	// evohome web commands
@@ -78,48 +79,63 @@ private:
 
 	// evohome client library - don't ask about naming convention - these are imported from another project
 	bool login(const std::string &user, const std::string &password);
+	bool renew_login();
 	bool user_account();
 
 	void get_gateways(int location);
 	void get_temperatureControlSystems(int location, int gateway);
 	void get_zones(int location, int gateway, int temperatureControlSystem);
+	void get_dhw(int location, int gateway, int temperatureControlSystem);
 
 	bool full_installation();
 	bool get_status(int location);
-	bool get_status(std::string locationId);
+	bool get_status(const std::string &locationId);
 
-	zone* get_zone_by_ID(std::string zoneId);
+	zone *get_zone_by_ID(const std::string &zoneId);
 
 	bool has_dhw(temperatureControlSystem *tcs);
 
-	bool get_schedule(std::string zoneId);
-	std::string get_next_switchpoint(temperatureControlSystem* tcs, int zone);
-	std::string get_next_switchpoint(zone* hz);
+	bool get_dhw_schedule(const std::string &dhwId);
+	bool get_zone_schedule(const std::string &zoneId);
+	bool get_zone_schedule(const std::string &zoneId, const std::string &zoneType);
+	std::string get_next_switchpoint(temperatureControlSystem *tcs, int zone);
+	std::string get_next_switchpoint(zone *hz);
 	std::string get_next_switchpoint(Json::Value &schedule);
 	std::string get_next_switchpoint_ex(Json::Value &schedule, std::string &current_setpoint);
 
+	bool set_system_mode(const std::string &systemId, int mode);
+	bool set_temperature(const std::string &zoneId, const std::string &temperature, const std::string &time_until);
+	bool cancel_temperature_override(const std::string &zoneId);
+	bool set_dhw_mode(const std::string &dhwId, const std::string &mode, const std::string &time_until);
 
-	bool set_system_mode(std::string systemId, int mode);
-	bool set_temperature(std::string zoneId, std::string temperature, std::string time_until);
-	bool cancel_temperature_override(std::string zoneId);
-	bool set_dhw_mode(std::string dhwId, std::string mode, std::string time_until);
-
-	bool verify_datetime(std::string datetime);
+	bool verify_datetime(const std::string &datetime);
 
 	// status readers
-	void DecodeControllerMode(temperatureControlSystem* tcs);
-	void DecodeDHWState(temperatureControlSystem* tcs);
-	void DecodeZone(zone* hz);
+	void DecodeControllerMode(temperatureControlSystem *tcs);
+	void DecodeDHWState(temperatureControlSystem *tcs);
+	void DecodeZone(zone *hz);
 
 	// helpers
 	uint8_t GetUnit_by_ID(unsigned long evoID);
-	std::string local_to_utc(std::string local_time);
+	std::string local_to_utc(const std::string &local_time);
 
-	boost::shared_ptr<boost::thread> m_thread;
-	volatile bool m_stoprequested;
+	// Evohome v1 API
+	bool v1_login(const std::string &user, const std::string &password);
+	void v1_renew_session();
+	void get_v1_temps();
+
+	// HTTP helpers
+	std::string send_receive_data(const std::string &url, std::vector<std::string> &headers);
+	std::string send_receive_data(const std::string &url, const std::string &postdata, std::vector<std::string> &headers);
+	std::string put_receive_data(const std::string &url, const std::string &putdata, std::vector<std::string> &headers);
+	std::string process_response(std::vector<unsigned char> vHTTPResponse, std::vector<std::string> vHeaderData, bool httpOK);
+
+      private:
+	std::shared_ptr<std::thread> m_thread;
 
 	std::string m_username;
 	std::string m_password;
+	std::string m_v2refresh_token;
 	bool m_updatedev;
 	bool m_showschedule;
 	int m_refreshrate;
@@ -143,7 +159,6 @@ private:
 	uint8_t m_hdprecision;
 	int m_wdayoff;
 
-
 	static const uint8_t m_dczToEvoWebAPIMode[7];
 	static const std::string weekdays[7];
 	std::vector<std::string> m_SessionHeaders;
@@ -152,15 +167,11 @@ private:
 	Json::Value m_j_stat;
 
 	std::string m_evouid;
-	std::map<int, location> m_locations;
+	std::vector<location> m_locations;
 
-	temperatureControlSystem* m_tcs;
+	temperatureControlSystem *m_tcs;
 
 	// Evohome v1 API
 	std::string m_v1uid;
 	std::vector<std::string> m_v1SessionHeaders;
-
-	bool v1_login(const std::string &user, const std::string &password);
-	void get_v1_temps();
 };
-

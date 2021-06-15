@@ -18,13 +18,8 @@ m_Password(CURLEncode::URLEncode(password))
 {
 	m_HwdID=ID;
 	m_usIPPort=usIPPort;
-	m_stoprequested=false;
 	m_bOutputLog = false;
 	Init();
-}
-
-CETH8020::~CETH8020(void)
-{
 }
 
 void CETH8020::Init()
@@ -33,22 +28,25 @@ void CETH8020::Init()
 
 bool CETH8020::StartHardware()
 {
+	RequestStart();
+
 	Init();
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CETH8020::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted=true;
 	sOnConnected(this);
-	_log.Log(LOG_STATUS, "ETH8020: Started");
-	return (m_thread!=NULL);
+	Log(LOG_STATUS, "Started");
+	return (m_thread != nullptr);
 }
 
 bool CETH8020::StopHardware()
 {
-	if (m_thread!=NULL)
+	if (m_thread)
 	{
-		assert(m_thread);
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
+		m_thread.reset();
 	}
     m_bIsStarted=false;
     return true;
@@ -58,13 +56,12 @@ void CETH8020::Do_Work()
 {
 	int sec_counter = ETH8020_POLL_INTERVAL - 2;
 
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat=mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 
 		if (sec_counter % ETH8020_POLL_INTERVAL == 0)
@@ -72,10 +69,10 @@ void CETH8020::Do_Work()
 			GetMeterDetails();
 		}
 	}
-	_log.Log(LOG_STATUS,"ETH8020: Worker stopped...");
+	Log(LOG_STATUS,"Worker stopped...");
 }
 
-bool CETH8020::WriteToHardware(const char *pdata, const unsigned char length)
+bool CETH8020::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 {
 	const tRBUF *pSen = reinterpret_cast<const tRBUF*>(pdata);
 
@@ -112,13 +109,13 @@ bool CETH8020::WriteToHardware(const char *pdata, const unsigned char length)
 		std::string sResult;
 		if (!HTTPClient::GET(szURL.str(), sResult))
 		{
-			_log.Log(LOG_ERROR, "ETH8020: Error sending relay command to: %s", m_szIPAddress.c_str());
+			Log(LOG_ERROR, "Error sending relay command to: %s", m_szIPAddress.c_str());
 			return false;
 		}
 /*
 		if (sResult.find("Success") == std::string::npos)
 		{
-			_log.Log(LOG_ERROR, "ETH8020: Error sending relay command to: %s", m_szIPAddress.c_str());
+			Log(LOG_ERROR, "Error sending relay command to: %s", m_szIPAddress.c_str());
 			return false;
 		}
 */
@@ -127,10 +124,10 @@ bool CETH8020::WriteToHardware(const char *pdata, const unsigned char length)
 	return false;
 }
 
-void CETH8020::UpdateSwitch(const unsigned char Idx, const int SubUnit, const bool bOn, const double Level, const std::string &defaultname)
+void CETH8020::UpdateSwitch(const unsigned char Idx, const uint8_t SubUnit, const bool bOn, const double Level, const std::string &defaultname)
 {
 	double rlevel = (15.0 / 100)*Level;
-	int level = int(rlevel);
+	uint8_t level = (uint8_t)(rlevel);
 
 	char szIdx[10];
 	sprintf(szIdx, "%X%02X%02X%02X", 0, 0, 0, Idx);
@@ -173,7 +170,7 @@ void CETH8020::UpdateSwitch(const unsigned char Idx, const int SubUnit, const bo
 	lcmd.LIGHTING2.level = level;
 	lcmd.LIGHTING2.filler = 0;
 	lcmd.LIGHTING2.rssi = 12;
-	sDecodeRXMessage(this, (const unsigned char *)&lcmd.LIGHTING2, defaultname.c_str(), 255);
+	sDecodeRXMessage(this, (const unsigned char *)&lcmd.LIGHTING2, defaultname.c_str(), 255, m_Name.c_str());
 }
 
 void CETH8020::GetMeterDetails()
@@ -194,37 +191,37 @@ void CETH8020::GetMeterDetails()
 
 	if (!HTTPClient::GET(szURL.str(),sResult))
 	{
-		_log.Log(LOG_ERROR,"ETH8020: Error connecting to: %s", m_szIPAddress.c_str());
+		Log(LOG_ERROR,"Error connecting to: %s", m_szIPAddress.c_str());
 		return;
 	}
 	std::vector<std::string> results;
 	StringSplit(sResult, "\r\n", results);
 	if (results.size()<8)
 	{
-		_log.Log(LOG_ERROR,"ETH8020: Error connecting to: %s", m_szIPAddress.c_str());
+		Log(LOG_ERROR,"Error connecting to: %s", m_szIPAddress.c_str());
 		return;
 	}
 	if (results[0] != "<response>")
 	{
-		_log.Log(LOG_ERROR, "ETH8020: Error getting status");
+		Log(LOG_ERROR, "Error getting status");
 		return;
 	}
 	size_t ii;
 	std::string tmpstr;
-	int pos1;
-	int Idx = 0;
+	size_t pos1;
+	uint8_t Idx = 0;
 	for (ii = 1; ii < results.size(); ii++)
 	{
 		tmpstr = results[ii];
 		if (tmpstr.find("<relay") != std::string::npos)
 		{
 			tmpstr = tmpstr.substr(strlen("<relay"));
-			pos1 = tmpstr.find(">");
+			pos1 = tmpstr.find('>');
 			if (pos1 != std::string::npos)
 			{
-				Idx = atoi(tmpstr.substr(0, pos1).c_str());
+				Idx = (uint8_t)atoi(tmpstr.substr(0, pos1).c_str());
 				tmpstr = tmpstr.substr(pos1+1);
-				pos1 = tmpstr.find("<");
+				pos1 = tmpstr.find('<');
 				if (pos1 != std::string::npos)
 				{
 					int lValue = atoi(tmpstr.substr(0, pos1).c_str());
@@ -237,21 +234,21 @@ void CETH8020::GetMeterDetails()
 		else if (tmpstr.find("<adc") != std::string::npos)
 		{
 			tmpstr = tmpstr.substr(strlen("<adc"));
-			pos1 = tmpstr.find(">");
+			pos1 = tmpstr.find('>');
 			if (pos1 != std::string::npos)
 			{
-				Idx = atoi(tmpstr.substr(0, pos1).c_str());
+				Idx = (uint8_t)atoi(tmpstr.substr(0, pos1).c_str());
 				tmpstr = tmpstr.substr(pos1 + 1);
-				pos1 = tmpstr.find("<");
+				pos1 = tmpstr.find('<');
 				if (pos1 != std::string::npos)
 				{
 					int lValue = atoi(tmpstr.substr(0, pos1).c_str());
-					float voltage = (float)(5.0f / 1023.0f)*lValue;
-					if (voltage > 5.0f)
-						voltage = 5.0f;
+					float voltage = (float)(5.0F / 1023.0F) * lValue;
+					if (voltage > 5.0F)
+						voltage = 5.0F;
 					std::stringstream sstr;
 					sstr << "Voltage " << Idx;
-					SendVoltageSensor(0, Idx, 255, voltage, sstr.str());
+					SendVoltageSensor(0, (uint8_t)Idx, 255, voltage, sstr.str());
 				}
 			}
 		}

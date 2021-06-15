@@ -1,9 +1,10 @@
+#pragma once
 // stdafx.h : include file for standard system include files,
 // or project specific include files that are used frequently, but
 // are changed infrequently
 //
 #if defined WIN32
-	#include "targetver.h"
+	#include <SDKDDKVer.h>
 #endif
 
 
@@ -16,6 +17,7 @@ typedef unsigned char       BYTE;
 //#include <stdlib.h>
 #include <string>
 	#include <sys/socket.h> // Needed for the socket functions
+	#include <sys/time.h>
 	#include <netdb.h>
 	#include <arpa/inet.h>
 	typedef int SOCKET;
@@ -23,12 +25,8 @@ typedef unsigned char       BYTE;
 	#define SOCKET_ERROR   -1
 	#define closesocket(s) close(s);
 #else
-
-#if _MSC_VER > 1500
 	#pragma warning(disable : 4996)
-#endif
 	#include <winsock2.h>
-
 	#if defined _M_IX86
 	#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='x86' publicKeyToken='6595b64144ccf1df' language='*'\"")
 	#elif defined _M_IA64
@@ -38,14 +36,6 @@ typedef unsigned char       BYTE;
 	#else
 	#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 	#endif
-
-#if _MSC_VER <= 1500
-	// For Visual Studio 2008 and below, no stdint.h comes with the header files. Use boost's implementation.
-	#include <boost/cstdint.hpp>
-	using boost::uint32_t;
-	using boost::uint8_t;
-#endif
-
 #endif
 
 #if defined(__FreeBSD__)
@@ -54,5 +44,23 @@ typedef unsigned char       BYTE;
 
 #define WEBSERVER_DONT_USE_ZIP
 
-#include <boost/thread.hpp>
+// system, runtime, STL
+#include <algorithm>
+#include <iomanip>
+#include <map>
+#include <mutex>
+#include <vector>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <cmath>
 
+// third-party
+#include <json/json.h>
+#include "RFXtrx.h"
+#include <fmt/core.h>
+
+// rarely changing project-specific
+#include "concurrent_queue.h"
+#include "localtime_r.h"
+#include "StoppableTask.h"

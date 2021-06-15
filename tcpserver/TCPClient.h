@@ -1,10 +1,13 @@
 #pragma once
 
+#include "../main/Noncopyable.h"
 #include <boost/asio.hpp>
-#include <boost/array.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include "../webserver/proxyclient.h"
+
+namespace http {
+	namespace server {
+		class CProxyClient;
+	} // namespace server
+} // namespace http
 
 namespace tcp {
 namespace server {
@@ -12,11 +15,11 @@ namespace server {
 class CTCPServerIntBase;
 
 class CTCPClientBase : 
-	private boost::noncopyable
+	private domoticz::noncopyable
 {
 public:
 	explicit CTCPClientBase(CTCPServerIntBase *pManager);
-	~CTCPClientBase(void);
+	~CTCPClientBase();
 
 	virtual void start() = 0;
 	virtual void stop() = 0;
@@ -38,42 +41,42 @@ protected:
 };
 
 class CTCPClient : public CTCPClientBase,
-	public boost::enable_shared_from_this<CTCPClient>
+	public std::enable_shared_from_this<CTCPClient>
 {
 public:
 	CTCPClient(boost::asio::io_service& ios, CTCPServerIntBase *pManager);
-	~CTCPClient();
-	virtual void start();
-	virtual void stop();
-	virtual void write(const char *pData, size_t Length);
-private:
+	~CTCPClient() = default;
+	void start() override;
+	void stop() override;
+	void write(const char *pData, size_t Length) override;
+
+      private:
 	void handleRead(const boost::system::error_code& error, size_t length);
 	void handleWrite(const boost::system::error_code& error);
 
 	/// Buffer for incoming data.
-	boost::array<char, 8192> buffer_;
-
+	std::array<char, 8192> buffer_;
 };
 
 #ifndef NOCLOUD
 class CSharedClient : public CTCPClientBase,
-	public boost::enable_shared_from_this<CSharedClient>
+	public std::enable_shared_from_this<CSharedClient>
 {
 public:
-	CSharedClient(CTCPServerIntBase *pManager, boost::shared_ptr<http::server::CProxyClient> proxy, const std::string &token, const std::string &username);
-	~CSharedClient();
-	virtual void start();
-	virtual void stop();
-	virtual void write(const char *pData, size_t Length);
+	CSharedClient(CTCPServerIntBase *pManager, http::server::CProxyClient *proxy, const std::string &token, const std::string &username);
+	~CSharedClient() = default;
+	void start() override;
+	void stop() override;
+	void write(const char *pData, size_t Length) override;
 	void OnIncomingData(const unsigned char *data, size_t bytes_transferred);
 	bool CompareToken(const std::string &token);
 private:
-	boost::shared_ptr<http::server::CProxyClient> m_pProxyClient;
-	std::string _token;
+	http::server::CProxyClient *m_pProxyClient;
+	std::string m_token;
 };
 #endif
 
-typedef boost::shared_ptr<CTCPClientBase> CTCPClient_ptr;
+typedef std::shared_ptr<CTCPClientBase> CTCPClient_ptr;
 
 } // namespace server
 } // namespace tcp

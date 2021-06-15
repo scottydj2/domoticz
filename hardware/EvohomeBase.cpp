@@ -25,42 +25,40 @@
 #include "../main/SQLHelper.h"
 #include "../main/localtime_r.h"
 #include "../main/WebServer.h"
-#include "../json/json.h"
+#include <json/json.h>
 
 
 extern std::string szUserDataFolder;
 
-std::ofstream *CEvohomeBase::m_pEvoLog=NULL;
+std::ofstream *CEvohomeBase::m_pEvoLog = nullptr;
 #ifdef _DEBUG
 bool CEvohomeBase::m_bDebug=true;
 #else
 bool CEvohomeBase::m_bDebug=false;
 #endif
 
-const char CEvohomeBase::m_szControllerMode[7][20]={"Normal","Economy","Away","Day Off","Custom","Heating Off","Unknown"};
-const char CEvohomeBase::m_szWebAPIMode[7][20]={"Auto","AutoWithEco","Away","DayOff","Custom","HeatingOff","Unknown"};
-const char CEvohomeBase::m_szZoneMode[7][20]={"Auto","PermanentOverride","TemporaryOverride","OpenWindow","LocalOverride","RemoteOverride","Unknown"};
-
+constexpr std::array<const char *, 8> CEvohomeBase::m_szControllerMode{ "Normal", "Economy", "Away", "Day Off", "Day Off With Eco", "Custom", "Heating Off", "Unknown" };
+constexpr std::array<const char *, 8> CEvohomeBase::m_szWebAPIMode{ "Auto", "AutoWithEco", "Away", "DayOff", "DayOffWithEco", "Custom", "HeatingOff", "Unknown" };
+constexpr std::array<const char *, 7> CEvohomeBase::m_szZoneMode{ "Auto", "PermanentOverride", "TemporaryOverride", "OpenWindow", "LocalOverride", "RemoteOverride", "Unknown" };
 
 const char* CEvohomeBase::GetControllerModeName(uint8_t nControllerMode)
 {
-	return m_szControllerMode[(std::min)(nControllerMode,(uint8_t)6)]; //parentheses around function name apparently avoids macro expansion otherwise windef.h macros will conflict here
+	return m_szControllerMode[std::min(nControllerMode,(uint8_t)7)];
 }
 
 const char* CEvohomeBase::GetWebAPIModeName(uint8_t nControllerMode)
 {
-	return m_szWebAPIMode[(std::min)(nControllerMode,(uint8_t)6)]; //parentheses around function name apparently avoids macro expansion windef.h macros will conflict here
+	return m_szWebAPIMode[std::min(nControllerMode,(uint8_t)7)];
 }
 
 const char* CEvohomeBase::GetZoneModeName(uint8_t nZoneMode)
 {
-	return m_szZoneMode[(std::min)(nZoneMode, (uint8_t)6)]; //parentheses around function name apparently avoids macro expansion windef.h macros will conflict here
+	return m_szZoneMode[std::min(nZoneMode, (uint8_t)6)];
 }
 
-
-CEvohomeBase::CEvohomeBase(void) :
-	m_ZoneNames(m_nMaxZones),
-	m_ZoneOverrideLocal(m_nMaxZones)
+CEvohomeBase::CEvohomeBase()
+	: m_ZoneOverrideLocal(m_nMaxZones)
+	, m_ZoneNames(m_nMaxZones)
 {
 	m_HwdID=0;
 	m_nDevID=0;
@@ -69,16 +67,14 @@ CEvohomeBase::CEvohomeBase(void) :
 	m_nControllerMode=0;
 }
 
-
-CEvohomeBase::~CEvohomeBase(void)
+CEvohomeBase::~CEvohomeBase()
 {
-	m_bIsStarted=false;
+	m_bIsStarted = false;
 }
-
 
 bool CEvohomeBase::SetZoneCount(uint8_t nZoneCount)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxZoneCount);
+	std::lock_guard<std::mutex> l(m_mtxZoneCount);
 	bool bRet=(m_nZoneCount!=nZoneCount);
 	m_nZoneCount=nZoneCount;
 	return bRet;
@@ -87,8 +83,8 @@ bool CEvohomeBase::SetZoneCount(uint8_t nZoneCount)
 
 bool CEvohomeBase::SetMaxZoneCount(uint8_t nZoneCount)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxZoneCount);
-	int nMaxZones=(std::max)(m_nZoneCount,nZoneCount); //parentheses around function name apparently avoids macro expansion windef.h macros will conflict here
+	std::lock_guard<std::mutex> l(m_mtxZoneCount);
+	uint8_t nMaxZones=std::max(m_nZoneCount,nZoneCount);
 	bool bRet=(m_nZoneCount!=nMaxZones);
 	m_nZoneCount=nMaxZones;
 	return bRet;
@@ -97,14 +93,14 @@ bool CEvohomeBase::SetMaxZoneCount(uint8_t nZoneCount)
 
 uint8_t CEvohomeBase::GetZoneCount()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxZoneCount);
+	std::lock_guard<std::mutex> l(m_mtxZoneCount);
 	return m_nZoneCount; //return value is constructed before the lock is released
 }
 
 
 bool CEvohomeBase::SetControllerMode(uint8_t nControllerMode)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerMode);
+	std::lock_guard<std::mutex> l(m_mtxControllerMode);
 	bool bRet=(m_nControllerMode!=nControllerMode);
 	m_nControllerMode=nControllerMode;
 	return bRet;
@@ -113,36 +109,36 @@ bool CEvohomeBase::SetControllerMode(uint8_t nControllerMode)
 
 uint8_t CEvohomeBase::GetControllerMode()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerMode);
+	std::lock_guard<std::mutex> l(m_mtxControllerMode);
 	return m_nControllerMode; //return value is constructed before the lock is released
 }
 
 
 void CEvohomeBase::InitControllerName()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerName);
+	std::lock_guard<std::mutex> l(m_mtxControllerName);
 	if(m_szControllerName.empty())
 		m_szControllerName="EvoTouch Colour";
 }
 
 
-void CEvohomeBase::SetControllerName(std::string szName)
+void CEvohomeBase::SetControllerName(const std::string &szName)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerName);
+	std::lock_guard<std::mutex> l(m_mtxControllerName);
 	m_szControllerName=szName;
 }
 
 
 std::string CEvohomeBase::GetControllerName()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerName);
+	std::lock_guard<std::mutex> l(m_mtxControllerName);
 	return m_szControllerName;
 }
 
 
 void CEvohomeBase::InitZoneNames()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxZoneName);
+	std::lock_guard<std::mutex> l(m_mtxZoneName);
 	char szTmp[1024];
 	for(int i=0;i<(int)m_ZoneNames.size();i++)
 	{
@@ -155,9 +151,9 @@ void CEvohomeBase::InitZoneNames()
 }
 
 
-void CEvohomeBase::SetZoneName(uint8_t nZone, std::string szName)
+void CEvohomeBase::SetZoneName(const uint8_t nZone, const std::string &szName)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxZoneName);
+	std::lock_guard<std::mutex> l(m_mtxZoneName);
 	if(nZone>=m_ZoneNames.size()) //should be pre-sized to max zones
 		return;
 	m_ZoneNames[nZone]=szName;
@@ -166,50 +162,64 @@ void CEvohomeBase::SetZoneName(uint8_t nZone, std::string szName)
 
 std::string CEvohomeBase::GetZoneName(uint8_t nZone)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxZoneName);
+	std::lock_guard<std::mutex> l(m_mtxZoneName);
 	if(nZone>=m_ZoneNames.size()) //should be pre-sized to max zones
 		return "Out of bounds";
 	return m_ZoneNames[nZone];
 }
 
 
-int CEvohomeBase::GetControllerID()
+unsigned int CEvohomeBase::GetControllerID()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerID);
+	std::lock_guard<std::mutex> l(m_mtxControllerID);
 	return m_nDevID;
 }
 
 
-void CEvohomeBase::SetControllerID(int nID)
+void CEvohomeBase::SetControllerID(unsigned int nID)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxControllerID);
+	std::lock_guard<std::mutex> l(m_mtxControllerID);
 	m_nDevID=nID;
 }
 
 
-int CEvohomeBase::GetGatewayID()
+unsigned int CEvohomeBase::GetGatewayID()
 {
-	boost::lock_guard<boost::mutex> l(m_mtxGatewayID);
+	std::lock_guard<std::mutex> l(m_mtxGatewayID);
 	return m_nMyID;
 }
 
 
-void CEvohomeBase::SetGatewayID(int nID)
+void CEvohomeBase::SetGatewayID(unsigned int nID)
 {
-	boost::lock_guard<boost::mutex> l(m_mtxGatewayID);
+	std::lock_guard<std::mutex> l(m_mtxGatewayID);
 	m_nMyID=nID;
+}
+
+
+unsigned int CEvohomeBase::GetOpenThermBridgeID()
+{
+	std::lock_guard<std::mutex> l(m_mtxOpenThermBridgeID);
+	return m_nOtbID;
+}
+
+
+void CEvohomeBase::SetOpenThermBridgeID(unsigned int nID)
+{
+	std::lock_guard<std::mutex> l(m_mtxOpenThermBridgeID);
+	m_nOtbID=nID;
 }
 
 
 void CEvohomeBase::LogDate()
 {
         char szTmp[256];
-	time_t atime = mytime(NULL);
-        struct tm ltime;
-        localtime_r(&atime, &ltime);
+	time_t atime = mytime(nullptr);
+	struct tm ltime;
+	localtime_r(&atime, &ltime);
 
-        strftime (szTmp,256,"%Y-%m-%d %H:%M:%S ",&ltime);
-        *m_pEvoLog << szTmp;
+	strftime(szTmp, 256, "%Y-%m-%d %H:%M:%S ", &ltime);
+	*m_pEvoLog << szTmp;
 }
 
 
@@ -241,7 +251,7 @@ void CEvohomeBase::Log(bool bDebug, int nLogLevel, const char* format, ... )
         va_end(argList);
 
 	if(!bDebug || m_bDebug)
-		_log.Log(static_cast<_eLogLevel>(nLogLevel),cbuffer);
+		_log.Log(static_cast<_eLogLevel>(nLogLevel), "%s", cbuffer);
 	if(m_bDebug && m_pEvoLog)
 	{
 		LogDate();
@@ -264,7 +274,7 @@ namespace http {
 
 			std::string idx = request::findValue(&req, "idx");
 			std::string ssensortype = request::findValue(&req, "sensortype");
-			if ((idx == "") || (ssensortype == ""))
+			if ((idx.empty()) || (ssensortype.empty()))
 				return;
 
 			bool bCreated = false;
@@ -277,7 +287,7 @@ namespace http {
 			result = m_sql.safe_query("SELECT MAX(ID) FROM DeviceStatus");
 			unsigned long nid = 1; //could be the first device ever
 
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				nid = atol(result[0][0].c_str());
 			}
@@ -289,7 +299,7 @@ namespace http {
 			result = m_sql.safe_query("SELECT COUNT(*) FROM DeviceStatus WHERE (HardwareID==%d) AND (Type==%d)", HwdID, (int)iSensorType);
 
 			int nDevCount = 0;
-			if (result.size() > 0)
+			if (!result.empty())
 			{
 				nDevCount = atol(result[0][0].c_str());
 			}
@@ -315,7 +325,7 @@ namespace http {
 					root["message"] = "Maximum number of supported zones reached";
 					return;
 				}
-				m_sql.UpdateValue(HwdID, ID, nDevCount + 1, pTypeEvohomeZone, sTypeEvohomeZone, 10, 255, 0, "0.0;0.0;Auto", devname);
+				m_sql.UpdateValue(HwdID, ID, (uint8_t)nDevCount + 1, pTypeEvohomeZone, sTypeEvohomeZone, 10, 255, 0, "0.0;0.0;Auto", devname);
 				bCreated = true;
 				break;
 			case pTypeEvohomeWater://DHW...should be 1 per hardware
@@ -335,7 +345,5 @@ namespace http {
 				root["title"] = "CreateEvohomeSensor";
 			}
 		}
-	}
-}
-
-
+	} // namespace server
+} // namespace http

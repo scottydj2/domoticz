@@ -12,7 +12,6 @@
 #define HTTP_REPLY_HPP
 
 #include <string>
-#include <vector>
 #include <iterator>
 #include <boost/asio.hpp>
 #include "header.hpp"
@@ -26,6 +25,9 @@ struct reply
   /// The status of the reply.
   enum status_type
   {
+	switching_protocols = 101,
+	download_file = 102,
+
     ok = 200,
     created = 201,
     accepted = 202,
@@ -42,7 +44,7 @@ struct reply
     not_implemented = 501,
     bad_gateway = 502,
     service_unavailable = 503
-  } status;
+  } status = bad_request;
 
   /// The headers to be included in the reply.
   std::vector<header> headers;
@@ -62,6 +64,7 @@ struct reply
   static void set_content(reply *rep, const std::wstring & content_w);
   static bool set_content_from_file(reply *rep, const std::string & file_path);
   static bool set_content_from_file(reply *rep, const std::string & file_path, const std::string & attachment, bool set_content_type = false);
+  static bool set_download_file(reply* rep, const std::string& file_path, const std::string& attachment);
   static void add_header_attachment(reply *rep, const std::string & attachment);
   static void add_header_content_type(reply *rep, const std::string & content_type);
 
@@ -69,6 +72,10 @@ struct reply
   static void set_content(reply *rep, InputIterator first, InputIterator last) {
     rep->content.assign(first, last);
   }
+
+  // we use this as an alternative for to_buffers()
+  std::string header_to_string();
+  std::string to_string(const std::string &method);
 
   // reset the reply, so we can re-use it during long-lived connections
   void reset();

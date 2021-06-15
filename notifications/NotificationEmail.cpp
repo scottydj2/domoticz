@@ -48,6 +48,7 @@ const static char *szHTMLMail =
 
 CNotificationEmail::CNotificationEmail() : CNotificationBase(std::string("email"), OPTIONS_HTML_BODY)
 {
+	SetupConfig(std::string("EmailEnabled"), &m_IsEnabled);
 	SetupConfig(std::string("EmailFrom"), _EmailFrom);
 	SetupConfig(std::string("EmailTo"), _EmailTo);
 	SetupConfig(std::string("EmailServer"), _EmailServer);
@@ -56,10 +57,6 @@ CNotificationEmail::CNotificationEmail() : CNotificationBase(std::string("email"
 	SetupConfigBase64(std::string("EmailPassword"), _EmailPassword);
 	SetupConfig(std::string("UseEmailInNotifications"), &_UseEmailInNotifications);
 	SetupConfig(std::string("EmailAsAttachment"), &_EmailAsAttachment);
-}
-
-CNotificationEmail::~CNotificationEmail()
-{
 }
 
 bool CNotificationEmail::SendMessageImplementation(
@@ -83,9 +80,9 @@ bool CNotificationEmail::SendMessageImplementation(
 
 	std::string MessageText = Text;
 	stdreplace(MessageText, "&lt;br&gt;", "<br>");
-	
+
 	std::string HtmlBody;
-	
+
 	if (Idx != 0)
 	{
 		HtmlBody = szHTMLMail;
@@ -96,20 +93,7 @@ bool CNotificationEmail::SendMessageImplementation(
 		stdreplace(HtmlBody, "$DEVNAME", Name);
 		stdreplace(HtmlBody, "$MESSAGE", MessageText);
 
-		char szDate[100];
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-		struct tm timeinfo;
-#ifdef WIN32
-		//Thanks to the winsock header file
-		time_t tv_sec = tv.tv_sec;
-		localtime_r(&tv_sec, &timeinfo);
-#else
-		localtime_r(&tv.tv_sec, &timeinfo);
-#endif
-		snprintf(szDate, sizeof(szDate), "%04d-%02d-%02d %02d:%02d:%02d.%03d",
-			timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
-			timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec, (int)tv.tv_usec / 1000);
+		std::string szDate = TimeToString(nullptr, TF_DateTimeMs);
 		stdreplace(HtmlBody, "$DATETIME", szDate);
 	}
 	else
@@ -117,14 +101,15 @@ bool CNotificationEmail::SendMessageImplementation(
 		HtmlBody = std::string("<html>\n<body>\n<b>") + MessageText + std::string("</body>\n</html>\n");
 	}
 
-	sclient.SetFrom(_EmailFrom.c_str());
-	sclient.SetTo(_EmailTo.c_str());
-	if (_EmailUsername != "" && _EmailPassword != "") {
-		sclient.SetCredentials(_EmailUsername.c_str(), _EmailPassword.c_str());
+	sclient.SetFrom(_EmailFrom);
+	sclient.SetTo(_EmailTo);
+	if (!_EmailUsername.empty() && !_EmailPassword.empty())
+	{
+		sclient.SetCredentials(_EmailUsername, _EmailPassword);
 	}
-	sclient.SetServer(_EmailServer.c_str(), _EmailPort);
-	sclient.SetSubject(Subject.c_str());
-	sclient.SetHTMLBody(HtmlBody.c_str());
+	sclient.SetServer(_EmailServer, _EmailPort);
+	sclient.SetSubject(Subject);
+	sclient.SetHTMLBody(HtmlBody);
 	bool bRet=sclient.SendEmail();
 	if (!bRet) {
 		_log.Log(LOG_ERROR, "Failed to send Email notification!");
@@ -134,5 +119,5 @@ bool CNotificationEmail::SendMessageImplementation(
 
 bool CNotificationEmail::IsConfigured()
 {
-	return (_EmailFrom != "" && _EmailTo != "" && _EmailServer != "" && _EmailPort != 0);
+	return (!_EmailFrom.empty() && !_EmailTo.empty() && !_EmailServer.empty() && _EmailPort != 0);
 }

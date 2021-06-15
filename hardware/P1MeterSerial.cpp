@@ -14,21 +14,55 @@
 #include <string>
 #include <algorithm>
 #include <iostream>
-#include <boost/bind.hpp>
-
 #include <ctime>
+
+#ifdef _DEBUG
+//#define DEBUG_P1_R
+#endif
+
+#ifdef DEBUG_P1_R
+//Belgium
+const char *szP1Test=R"p1_test(/FLU5\253770234_A
+
+0-0:96.1.4(50213)
+0-0:96.1.1(3153414731313030303037313930)
+0-0:1.0.0(190905142315S)
+1-0:1.8.1(000244.844*kWh)
+1-0:1.8.2(000226.027*kWh)
+1-0:2.8.1(000139.553*kWh)
+1-0:2.8.2(000045.390*kWh)
+0-0:96.14.0(0001)
+1-0:1.7.0(00.000*kW)
+1-0:2.7.0(00.198*kW)
+1-0:32.7.0(240.0*V)
+1-0:31.7.0(002*A)
+0-0:96.3.10(1)
+0-0:17.0.0(999.9*kW)
+1-0:31.4.0(999*A)
+0-0:96.13.0()
+0-1:24.1.0(003)
+0-1:96.1.1(37464C4F32313139303137303532)
+0-1:24.4.0(1)
+0-1:24.2.3(190905142001S)(00071.724*m3)
+!0F77)p1_test";
+#endif
 
 //
 //Class P1MeterSerial
 //
-P1MeterSerial::P1MeterSerial(const int ID, const std::string& devname, const unsigned int baud_rate, const bool disable_crc, const int ratelimit):
+P1MeterSerial::P1MeterSerial(const int ID, const std::string& devname, const unsigned int baud_rate, const bool disable_crc, const int ratelimit, const std::string& DecryptionKey):
 m_szSerialPort(devname)
 {
 	m_HwdID=ID;
 	m_iBaudRate=baud_rate;
-	m_stoprequested = false;
 	m_bDisableCRC = disable_crc;
 	m_ratelimit = ratelimit;
+
+	if (!DecryptionKey.empty())
+	{
+		m_bIsEncrypted = true;
+		m_szHexKey = HexToBytes(DecryptionKey);
+	}
 }
 
 P1MeterSerial::P1MeterSerial(const std::string& devname,
@@ -40,12 +74,6 @@ P1MeterSerial::P1MeterSerial(const std::string& devname,
         :AsyncSerial(devname,baud_rate,opt_parity,opt_csize,opt_flow,opt_stop),
 		m_iBaudRate(baud_rate)
 {
-	m_stoprequested = false;
-}
-
-P1MeterSerial::~P1MeterSerial()
-{
-
 }
 
 #ifdef _DEBUG
@@ -54,6 +82,8 @@ P1MeterSerial::~P1MeterSerial()
 
 bool P1MeterSerial::StartHardware()
 {
+	RequestStart();
+
 #ifdef DEBUG_FROM_FILE
 	FILE *fIn=fopen("E:\\meter.txt","rb+");
 	BYTE buffer[1400];
@@ -61,13 +91,11 @@ bool P1MeterSerial::StartHardware()
 	fclose(fIn);
 	ParseData((const BYTE*)&buffer, ret, 1);
 #endif
-	m_stoprequested = false;
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&P1MeterSerial::Do_Work, this)));
 
 	//Try to open the Serial Port
 	try
 	{
-		_log.Log(LOG_STATUS,"P1 Smart Meter: Using serial port: %s", m_szSerialPort.c_str());
+		Log(LOG_STATUS,"Using serial port: %s", m_szSerialPort.c_str());
 		if (m_iBaudRate==9600)
 		{
 			open(
@@ -89,15 +117,15 @@ bool P1MeterSerial::StartHardware()
 				boost::asio::serial_port_base::character_size(8)
 				);
 			if (m_bDisableCRC) {
-				_log.Log(LOG_STATUS,"P1 Smart Meter: CRC validation disabled through hardware control");
+				Log(LOG_STATUS,"CRC validation disabled through hardware control");
 			}
 		}
 	}
 	catch (boost::exception & e)
 	{
-		_log.Log(LOG_ERROR,"P1 Smart Meter: Error opening serial port!");
+		Log(LOG_ERROR,"Error opening serial port!");
 #ifdef _DEBUG
-		_log.Log(LOG_ERROR,"-----------------\n%s\n-----------------",boost::diagnostic_information(e).c_str());
+		Log(LOG_ERROR,"-----------------\n%s\n-----------------",boost::diagnostic_information(e).c_str());
 #else
 		(void)e;
 #endif
@@ -105,41 +133,45 @@ bool P1MeterSerial::StartHardware()
 	}
 	catch ( ... )
 	{
-		_log.Log(LOG_ERROR,"P1 Smart Meter: Error opening serial port!!!");
+		Log(LOG_ERROR,"Error opening serial port!!!");
 		return false;
 	}
+
+	Init();
+
 	m_bIsStarted=true;
-	m_linecount=0;
-	m_exclmarkfound=0;
-	m_lastUpdateTime=0;
-	setReadCallback(boost::bind(&P1MeterSerial::readCallback, this, _1, _2));
+
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
+
+	setReadCallback([this](auto d, auto l) { readCallback(d, l); });
 	sOnConnected(this);
+
+#ifdef DEBUG_P1_R
+	ParseP1Data((const uint8_t*)szP1Test, static_cast<int>(strlen(szP1Test)), m_bDisableCRC, m_ratelimit);
+#endif
+
 	return true;
 }
 
 bool P1MeterSerial::StopHardware()
 {
-	terminate();
-	m_stoprequested = true;
 	if (m_thread)
 	{
+		RequestStop();
 		m_thread->join();
-		// Wait a while. The read thread might be reading. Adding this prevents a pointer error in the async serial class.
-		sleep_milliseconds(10);
+		m_thread.reset();
 	}
 	m_bIsStarted = false;
-    _log.Log(LOG_STATUS, "P1 Smart Meter: Serial Worker stopped...");
-	return true;
+ 	return true;
 }
 
 
 void P1MeterSerial::readCallback(const char *data, size_t len)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
-
 	if (!m_bEnableReceive)
 		return; //receiving not enabled
-	ParseData((const unsigned char*)data, static_cast<int>(len), m_bDisableCRC, m_ratelimit);
+	ParseP1Data((const unsigned char*)data, static_cast<int>(len), m_bDisableCRC, m_ratelimit);
 }
 
 bool P1MeterSerial::WriteToHardware(const char *pdata, const unsigned char length)
@@ -151,11 +183,9 @@ void P1MeterSerial::Do_Work()
 {
 	int sec_counter = 0;
 	int msec_counter = 0;
-	while (!m_stoprequested)
+	Log(LOG_STATUS, "Worker started...");
+	while (!IsStopRequested(200))
 	{
-		sleep_milliseconds(200);
-		if (m_stoprequested)
-			break;
 		msec_counter++;
 		if (msec_counter == 5)
 		{
@@ -163,8 +193,12 @@ void P1MeterSerial::Do_Work()
 
 			sec_counter++;
 			if (sec_counter % 12 == 0) {
-				m_LastHeartbeat=mytime(NULL);
+				m_LastHeartbeat = mytime(nullptr);
 			}
 		}
 	}
+	terminate();
+
+	Log(LOG_STATUS, "Worker stopped...");
+
 }

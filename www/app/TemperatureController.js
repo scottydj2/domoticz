@@ -1,34 +1,18 @@
-define(['app'], function (app) {
-	app.controller('TemperatureController', ['$scope', '$rootScope', '$location', '$http', '$interval', '$window', 'permissions', function ($scope, $rootScope, $location, $http, $interval, $window, permissions) {
+define(['app', 'livesocket'], function (app) {
+	app.controller('TemperatureController', function ($scope, $rootScope, $location, $http, $interval, $window, $route, $routeParams, deviceApi, permissions, livesocket) {
+		var $element = $('#main-view #tempcontent').last();
 
 		var ctrl = this;
 
 		MakeFavorite = function (id, isfavorite) {
-			if (!permissions.hasPermission("Admin")) {
-				HideNotify();
-				ShowNotify($.t('You do not have permission to do that!'), 2500, true);
-				return;
-			}
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
-			$.ajax({
-				url: "json.htm?type=command&param=makefavorite&idx=" + id + "&isfavorite=" + isfavorite,
-				async: false,
-				dataType: 'json',
-				success: function (data) {
-					ShowTemps();
-				}
+			deviceApi.makeFavorite(id, isfavorite).then(function() {
+				ShowTemps();
 			});
-		}
+		};
 
 		EditTempDevice = function (idx, name, description, addjvalue) {
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
 			$.devIdx = idx;
+			$("#dialog-edittempdevice #deviceidx").text(idx);
 			$("#dialog-edittempdevice #devicename").val(unescape(name));
 			$("#dialog-edittempdevice #devicedescription").val(unescape(description));
 			$("#dialog-edittempdevice #adjustment").val(addjvalue);
@@ -38,11 +22,8 @@ define(['app'], function (app) {
 		}
 
 		EditTempDeviceSmall = function (idx, name, description, addjvalue) {
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
 			$.devIdx = idx;
+			$("#dialog-edittempdevicesmall #deviceidx").text(idx);
 			$("#dialog-edittempdevicesmall #devicename").val(unescape(name));
 			$("#dialog-edittempdevicesmall #devicedescription").val(unescape(description));
 			$("#dialog-edittempdevicesmall").i18n();
@@ -62,11 +43,8 @@ define(['app'], function (app) {
 				bootbox.alert($.t('Can\'t change zone when the heating is off'));
 				return false;
 			}
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
 			$.devIdx = idx;
+			$("#dialog-editsetpoint #deviceidx").text(idx);
 			$("#dialog-editsetpoint #devicename").val(unescape(name));
 			$("#dialog-editsetpoint #devicedescription").val(unescape(description));
 			$("#dialog-editsetpoint #setpoint").val(setpoint);
@@ -74,7 +52,9 @@ define(['app'], function (app) {
 				$(":button:contains('Cancel Override')").attr("disabled", "d‌​isabled").addClass('ui-state-disabled');
 			else
 				$(":button:contains('Cancel Override')").removeAttr("disabled").removeClass('ui-state-disabled');
-			$("#dialog-editsetpoint #until").datetimepicker();
+			$("#dialog-editsetpoint #until").datetimepicker({
+				dateFormat: window.myglobals.DateFormat,
+			});
 			if (until != "")
 				$("#dialog-editsetpoint #until").datetimepicker("setDate", (new Date(until)));
 			$("#dialog-editsetpoint").i18n();
@@ -82,10 +62,6 @@ define(['app'], function (app) {
 		}
 		EditState = function (idx, name, description, state, mode, until, callback) {
 			//HeatingOff does not apply to dhw
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
 			$.devIdx = idx;
 			$("#dialog-editstate #devicename").val(unescape(name));
 			$("#dialog-editstate #devicedescription").val(unescape(description));
@@ -94,28 +70,13 @@ define(['app'], function (app) {
 				$(":button:contains('Cancel Override')").attr("disabled", "d‌​isabled").addClass('ui-state-disabled');
 			else
 				$(":button:contains('Cancel Override')").removeAttr("disabled").removeClass('ui-state-disabled');
-			$("#dialog-editstate #until_state").datetimepicker();
+			$("#dialog-editstate #until_state").datetimepicker({
+				dateFormat: window.myglobals.DateFormat,
+			});
 			if (until != "")
 				$("#dialog-editstate #until_state").datetimepicker("setDate", (new Date(until)));
 			$("#dialog-editstate").i18n();
 			$("#dialog-editstate").dialog("open");
-		}
-		EvoSetPointColor = function (item, sHeatMode, bkcolor) {
-			if (typeof item.SetPoint != 'undefined') {
-				if (sHeatMode == "HeatingOff" || item.SetPoint == 325.1)//seems to be used whenever the heating is off
-					bkcolor = "#9b9b9b";
-				else if (item.SetPoint >= 25)
-					bkcolor = "#ff0302";
-				else if (item.SetPoint >= 22)
-					bkcolor = "#ff6a2a";
-				else if (item.SetPoint >= 19)
-					bkcolor = "#fe9b2d";
-				else if (item.SetPoint >= 16)
-					bkcolor = "#79bc5c";
-				else //min on temp 5 or greater
-					bkcolor = "#6ca5fd";
-			}
-			return bkcolor;
 		}
 		//FIXME move this to a shared js ...see lightscontroller.js
 		EvoDisplayTextMode = function (strstatus) {
@@ -125,7 +86,9 @@ define(['app'], function (app) {
 				strstatus = "Economy";
 			else if (strstatus == "DayOff")//FIXME better way to convert?
 				strstatus = "Day Off";
-			else if (strstatus == "HeatingOff")//FIXME better way to convert?
+			else if (strstatus == "DayOffWithEco")//FIXME better way to convert?
+				strstatus = "Day Off With Eco";
+ 			else if (strstatus == "HeatingOff")//FIXME better way to convert?
 				strstatus = "Heating Off";
 			return strstatus;
 		}
@@ -134,45 +97,37 @@ define(['app'], function (app) {
 			bootbox.alert($.t('Please use the devices tab for this.'));
 		}
 
-		RefreshTemps = function () {
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
-			var id = "";
-			$.ajax({
-				url: "json.htm?type=devices&filter=temp&used=true&order=[Order]&lastupdate=" + $.LastUpdateTime + "&plan=" + window.myglobals.LastPlanSelected,
-				async: false,
-				dataType: 'json',
-				success: function (data) {
-					if (typeof data.ServerTime != 'undefined') {
-						$rootScope.SetTimeAndSun(data.Sunrise, data.Sunset, data.ServerTime);
-					}
-
-					if (typeof data.result != 'undefined') {
-						if (typeof data.ActTime != 'undefined') {
-							$.LastUpdateTime = parseInt(data.ActTime);
-						}
-
-						// Change updated items in temperatures list
-						// TODO is there a better way to do this ?
-						data.result.forEach(function (newitem) {
-							ctrl.temperatures.forEach(function (olditem, oldindex, oldarray) {
-								if (olditem.idx == newitem.idx) {
-									oldarray[oldindex] = newitem;
-									if ($scope.config.ShowUpdatedEffect == true) {
-										$("#tempwidgets #" + newitem.idx + " #name").effect("highlight", { color: '#EEFFEE' }, 1000);
-									}
-								}
-							});
-						});
+		RefreshItem = function (item) {
+			ctrl.temperatures.forEach(function (olditem, oldindex, oldarray) {
+				if (olditem.idx == item.idx) {
+					oldarray[oldindex] = item;
+					if ($scope.config.ShowUpdatedEffect == true) {
+						$("#tempwidgets #" + item.idx + " #name").effect("highlight", { color: '#EEFFEE' }, 1000);
 					}
 				}
 			});
+		}
 
-			$scope.mytimer = $interval(function () {
-				RefreshTemps();
-			}, 10000);
+		//We only call this once. After this the widgets are being updated automatically by used of the 'jsonupdate' broadcast event.
+		RefreshTemps = function () {
+			livesocket.getJson("json.htm?type=devices&filter=temp&used=true&order=[Order]&lastupdate=" + $.LastUpdateTime + "&plan=" + window.myglobals.LastPlanSelected, function (data) {
+				if (typeof data.ServerTime != 'undefined') {
+					$rootScope.SetTimeAndSun(data.Sunrise, data.Sunset, data.ServerTime);
+				}
+
+				if (typeof data.result != 'undefined') {
+					if (typeof data.ActTime != 'undefined') {
+						$.LastUpdateTime = parseInt(data.ActTime);
+					}
+
+					/*
+						Render all the widgets at once.
+					*/
+					$.each(data.result, function (i, item) {
+						RefreshItem(item);
+					});
+				}
+			});
 		}
 
 		ShowForecast = function () {
@@ -180,10 +135,6 @@ define(['app'], function (app) {
 		}
 
 		ShowTemps = function () {
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
 			$('#modal').show();
 
 			// TODO should belong to a global controller
@@ -191,8 +142,10 @@ define(['app'], function (app) {
 				return $window.myglobals.ismobile == false;
 			};
 
+			var roomPlanId = $routeParams.room || window.myglobals.LastPlanSelected;
+
 			$.ajax({
-				url: "json.htm?type=devices&filter=temp&used=true&order=[Order]&plan=" + window.myglobals.LastPlanSelected,
+				url: "json.htm?type=devices&filter=temp&used=true&order=[Order]&plan=" + roomPlanId,
 				async: false,
 				dataType: 'json',
 				success: function (data) {
@@ -200,7 +153,6 @@ define(['app'], function (app) {
 						if (typeof data.ActTime != 'undefined') {
 							$.LastUpdateTime = parseInt(data.ActTime);
 						}
-
 						ctrl.temperatures = data.result;
 					} else {
 						ctrl.temperatures = [];
@@ -212,27 +164,19 @@ define(['app'], function (app) {
 			$('#temptophtm').i18n();
 			$('#tempwidgets').show();
 			$('#tempwidgets').i18n();
-			$('#tempcontent').html("");
-			$('#tempcontent').i18n();
+			$element.html("");
+			$element.i18n();
 
 			$rootScope.RefreshTimeAndSun();
-
-			$scope.mytimer = $interval(function () {
-				RefreshTemps();
-			}, 10000);
+			RefreshTemps();
 			return false;
 		};
 
 		$scope.DragWidget = function (idx) {
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
 			$.devIdx = idx;
 		};
 		$scope.DropWidget = function (idx) {
 			var myid = idx;
-			$.devIdx.split(' ');
 			var roomid = ctrl.roomSelected;
 			if (typeof roomid == 'undefined') {
 				roomid = 0;
@@ -247,6 +191,14 @@ define(['app'], function (app) {
 			});
 		};
 
+		// Convert time format taking account the time zone offset. Improved version of toISOString() function.
+		// Example from "Wed Apr 01 2020 17:00:00 GMT+0100 (British Summer Time)" to "2020-04-01T17:00:00.000Z"
+		ConvertTimeWithTimeZoneOffset = function (tUnit) {
+			var tzoffset = (new Date(tUnit)).getTimezoneOffset() * 60000; //offset in millisecondos
+			var tUntilWithTimeZoneOffset = (new Date(tUnit.getTime() - tzoffset)).toISOString().slice(0, -1) + 'Z';
+			return tUntilWithTimeZoneOffset
+		};
+
 		init();
 
 		function init() {
@@ -255,6 +207,10 @@ define(['app'], function (app) {
 			$.LastUpdateTime = parseInt(0);
 
 			$scope.MakeGlobalConfig();
+
+			$scope.$on('device_update', function (event, deviceData) {
+				RefreshItem(deviceData);
+			});
 
 			var dialog_edittempdevice_buttons = {};
 			dialog_edittempdevice_buttons[$.t("Update")] = function () {
@@ -333,7 +289,7 @@ define(['app'], function (app) {
 						bootbox.alert($.t('Temporary set point date / time must be in the future'));
 						return false;
 					}
-					tUntil = selectedDate.toISOString();
+					tUntil = ConvertTimeWithTimeZoneOffset(selectedDate);
 				}
 				if (bValid) {
 					$(this).dialog("close");
@@ -519,12 +475,6 @@ define(['app'], function (app) {
 
 
 		};
-		$scope.$on('$destroy', function () {
-			if (typeof $scope.mytimer != 'undefined') {
-				$interval.cancel($scope.mytimer);
-				$scope.mytimer = undefined;
-			}
-		});
 
 		ctrl.RoomPlans = [{ idx: 0, name: $.t("All") }];
 		$.ajax({
@@ -546,23 +496,28 @@ define(['app'], function (app) {
 			}
 		});
 
-		if (typeof window.myglobals.LastPlanSelected != 'undefined') {
-			ctrl.roomSelected = window.myglobals.LastPlanSelected;
+		var roomPlanId = $routeParams.room || window.myglobals.LastPlanSelected;
+
+		if (typeof roomPlanId != 'undefined') {
+			ctrl.roomSelected = roomPlanId;
 		}
 		ctrl.changeRoom = function () {
 			var idx = ctrl.roomSelected;
 			window.myglobals.LastPlanSelected = idx;
-			ShowTemps();
+
+			$route.updateParams({
+					room: idx > 0 ? idx : undefined
+				});
+				$location.replace();
+				$scope.$apply();
 		};
 
-	}])
-		.directive('dztemperaturewidget', ['$location', function ($location) {
+	})
+		.directive('dztemperaturewidget', function ($rootScope,$location) {
 			return {
 				priority: 0,
 				restrict: 'E',
-				templateUrl: 'views/temperatures/temperatureWidget.html',
-				scope: {},
-				bindToController: {
+				scope: {
 					item: '=',
 					tempsign: '=',
 					windsign: '=',
@@ -570,11 +525,12 @@ define(['app'], function (app) {
 					dragwidget: '&',
 					dropwidget: '&'
 				},
+				templateUrl: 'views/temperature_widget.html',
 				require: 'permissions',
 				controllerAs: 'ctrl',
 				controller: function ($scope, $element, $attrs, permissions) {
 					var ctrl = this;
-					var item = ctrl.item;
+					var item = $scope.item;
 
 					ctrl.sHeatMode = function () {
 						if (typeof item.Status != 'undefined') { //FIXME only support this for evohome?
@@ -584,22 +540,27 @@ define(['app'], function (app) {
 						}
 					};
 
-					ctrl.nbackcolor = function () {
-						var nbackcolor = "#D4E1EE";
-						if (item.HaveTimeout == true) {
-							nbackcolor = "#DF2D3A";
+					ctrl.nbackstyle = function () {
+						var backgroundClass = $rootScope.GetItemBackgroundStatus(item);
+						if(ctrl.displaySetPoint()){
+							if (ctrl.sHeatMode() == "HeatingOff" || !ctrl.isSetPointOn())//seems to be used whenever the heating is off
+                                        			backgroundClass="statusEvoSetPointOff";
+                                			else if (item.SetPoint >= 25)
+                                        			backgroundClass="statusEvoSetPoint25";
+                                			else if (item.SetPoint >= 22)
+                                        			backgroundClass="statusEvoSetPoint22";
+                                			else if (item.SetPoint >= 19)
+                                        			backgroundClass="statusEvoSetPoint19";
+                                			else if (item.SetPoint >= 16)
+                                        			backgroundClass="statusEvoSetPoint16";
+                                			else //min on temp 5 or greater
+                                        			backgroundClass="statusEvoSetPointMin";	
 						}
-						else {
-							var BatteryLevel = parseInt(item.BatteryLevel);
-							if (BatteryLevel != 255) {
-								if (BatteryLevel <= 10) {
-									nbackcolor = "#DDDF2D";
-								}
-							}
-						}
-						nbackcolor = EvoSetPointColor(item, ctrl.sHeatMode(), nbackcolor);
-						return { 'background-color': nbackcolor };
+						return backgroundClass;
 					};
+
+					ctrl.displayTrend = $rootScope.DisplayTrend;
+					ctrl.trendState  = $rootScope.TrendState;
 
 					// TODO use angular isDefined
 					ctrl.displayTemp = function () {
@@ -630,7 +591,7 @@ define(['app'], function (app) {
 					ctrl.displayChill = function () {
 						return typeof item.Chill != 'undefined';
 					};
-
+					
 					ctrl.image = function () {
 						if (typeof item.Temp != 'undefined') {
 							return GetTemp48Item(item.Temp);
@@ -656,10 +617,14 @@ define(['app'], function (app) {
 					};
 					ctrl.dtUntil = function () {
 						if (angular.isDefined(item.Until)) {
-							var tUntil = item.Until.replace(/Z/, '').replace(/\..+/, '') + 'Z';
-							var dtUntil = new Date(tUntil);
-							dtUntil = new Date(dtUntil.getTime() - dtUntil.getTimezoneOffset() * 60000);
-							return dtUntil.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+							//var tUntil = item.Until.replace(/Z/, '').replace(/\..+/, '') + 'Z';
+							//console.log(tUntil + ' 2');
+							//var dtUntil = new Date(tUntil);
+							//dtUntil = new Date(dtUntil.getTime() - dtUntil.getTimezoneOffset() * 60000);
+							//var unitReturn_vaule = item.Until.replace(/T/, ' ').replace(/\..+/, '');
+							//console.log(unitReturn_vaule + ' 4');
+							//return unitReturn_vaule;
+							return item.Until.replace(/T/, ' ').replace(/\..+/, '');
 						}
 					};
 					ctrl.displayHumidityStatus = function () {
@@ -689,54 +654,46 @@ define(['app'], function (app) {
 
 
 					ctrl.MakeFavorite = function (n) {
-						return MakeFavorite(ctrl.item.idx, n);
+						return MakeFavorite(item.idx, n);
 					};
 
 					ctrl.EditTempDeviceSmall = function () {
-						return EditTempDeviceSmall(ctrl.item.idx, escape(ctrl.item.Name), escape(ctrl.item.Description), ctrl.item.AddjValue);
+						return EditTempDeviceSmall(item.idx, escape(item.Name), escape(item.Description), item.AddjValue);
 					};
 
 					ctrl.EditTempDevice = function () {
-						return EditTempDevice(ctrl.item.idx, escape(ctrl.item.Name), escape(ctrl.item.Description), ctrl.item.AddjValue);
+						return EditTempDevice(item.idx, escape(item.Name), escape(item.Description), item.AddjValue);
 					};
 
 					ctrl.ShowForecast = function (divId, fn) {
 						$('#tempwidgets').hide(); // TODO delete when multiple views implemented
 						$('#temptophtm').hide();
-						return ShowForecast(atob(ctrl.item.forecast_url), escape(ctrl.item.Name), divId, fn);
+						return ShowForecast(atob(item.forecast_url), escape(item.Name), divId, fn);
 					};
 
 					ctrl.EditSetPoint = function (fn) {
-						return EditSetPoint(ctrl.item.idx, escape(ctrl.item.Name), escape(ctrl.item.Description), ctrl.item.SetPoint, ctrl.item.Status, ctrl.item.Until, fn);
+						return EditSetPoint(item.idx, escape(item.Name), escape(item.Description), item.SetPoint, item.Status, item.Until, fn);
 					};
 
 					ctrl.EditState = function (fn) {
-						return EditState(ctrl.item.idx, escape(ctrl.item.Name), escape(ctrl.item.Description), ctrl.item.State, ctrl.item.Status, ctrl.item.Until, fn);
-					};
-
-					ctrl.ShowLog = function () {
-						$location.url('/Temperature/' + ctrl.item.idx + '/Log');
-					};
-
-					ctrl.ShowNotifications = function () {
-						$location.url('/Temperature/' + ctrl.item.idx + '/Notifications');
+						return EditState(item.idx, escape(item.Name), escape(item.Description), item.State, item.Status, item.Until, fn);
 					};
 
 					$element.i18n();
 
-					if (ctrl.ordering == true) {
+					if ($scope.ordering == true) {
 						if (permissions.hasPermission("Admin")) {
 							if (window.myglobals.ismobileint == false) {
 								$element.draggable({
 									drag: function () {
-										ctrl.dragwidget({ idx: ctrl.item.idx });
+										$scope.dragwidget({ idx: item.idx });
 										$element.css("z-index", 2);
 									},
 									revert: true
 								});
 								$element.droppable({
 									drop: function () {
-										ctrl.dropwidget({ idx: ctrl.item.idx });
+										$scope.dropwidget({ idx: item.idx });
 									}
 								});
 							}
@@ -745,5 +702,5 @@ define(['app'], function (app) {
 
 				}
 			};
-		}]);
+		});
 });

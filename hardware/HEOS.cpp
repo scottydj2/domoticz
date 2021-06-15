@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "HEOS.h"
 #include "../hardware/hardwaretypes.h"
+#include "../main/json_helper.h"
 #include "../main/Helper.h"
 #include "../main/Logger.h"
 #include "../main/SQLHelper.h"
@@ -13,43 +14,35 @@
 
 #include <iostream>
 
-#define DEBUG_LOGGING false
 #define RETRY_DELAY 30
 
-CHEOS::CHEOS(const int ID, const std::string &IPAddress, const unsigned short usIPPort, const std::string &User, const std::string &Pwd, const int PollIntervalsec, const int PingTimeoutms) : 
-m_IP(IPAddress),
-m_User(User),
-m_Pwd(Pwd)
+CHEOS::CHEOS(const int ID, const std::string &IPAddress, const unsigned short usIPPort, const std::string &User, const std::string &Pwd, const int PollIntervalsec, const int PingTimeoutms) :
+	m_IP(IPAddress),
+	m_User(User),
+	m_Pwd(Pwd)
 {
 	m_HwdID = ID;
-	m_bDoRestart = false;
-	m_stoprequested = false;
 	m_usIPPort = usIPPort;
 	m_retrycntr = RETRY_DELAY;
 	SetSettings(PollIntervalsec, PingTimeoutms);
 }
 
-CHEOS::~CHEOS(void)
-{
-}
-
 void CHEOS::ParseLine()
 {
-	if (m_bufferpos<2)
+	if (m_bufferpos < 2)
 		return;
 	std::string sLine((char*)&m_buffer);
 
 	try
 	{
-		Json::Reader jReader;
 		Json::Value root;
 
-		if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: Handling message: '%s'.", sLine.c_str());
-		
-		bool bRetVal = jReader.parse(sLine, root);
+		Debug(DEBUG_HARDWARE, "Handling message: '%s'.", sLine.c_str());
+
+		bool bRetVal = ParseJSon(sLine, root);
 		if ((!bRetVal) || (!root.isObject()))
 		{
-			_log.Log(LOG_ERROR, "DENON by HEOS: PARSE ERROR: '%s'", sLine.c_str());
+			Log(LOG_ERROR, "PARSE ERROR: '%s'", sLine.c_str());
 		}
 		else
 		{
@@ -64,30 +57,28 @@ void CHEOS::ParseLine()
 						{
 							if (root["heos"]["command"] == "system/heart_beat")
 							{
-								
+
 							}
 							else if (root["heos"]["command"] == "player/get_players")
-							{		
+							{
 								if (root.isMember("payload"))
 								{
-									int key = 0;
-									for( Json::ValueIterator itr = root["payload"].begin() ; itr != root["payload"].end() ; itr++ ) {		
-
-										if (root["payload"][key].isMember("name") && root["payload"][key].isMember("pid"))
+									for (const auto &r : root["payload"])
+									{
+										if (r.isMember("name") && r.isMember("pid"))
 										{
-											std::string pid = boost::to_string(root["payload"][key]["pid"].asInt());
-											AddNode(root["payload"][key]["name"].asCString(), pid);
+											std::string pid = std::to_string(r["pid"].asInt());
+											AddNode(r["name"].asCString(), pid);
 										}
 										else
 										{
-											if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: No players found.");
+											Debug(DEBUG_HARDWARE, "No players found.");
 										}
-										key++;
 									}
 								}
 								else
 								{
-									if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: No players found (No Payload).");
+									Debug(DEBUG_HARDWARE, "No players found (No Payload).");
 								}
 							}
 							else if (root["heos"]["command"] == "player/get_play_state" || root["heos"]["command"] == "player/set_play_state")
@@ -96,7 +87,7 @@ void CHEOS::ParseLine()
 								{
 									std::vector<std::string> SplitMessage;
 									StringSplit(root["heos"]["message"].asString(), "&", SplitMessage);
-									if (SplitMessage.size() > 0)
+									if (!SplitMessage.empty())
 									{
 										std::vector<std::string> SplitMessagePlayer;
 										StringSplit(SplitMessage[0], "=", SplitMessagePlayer);
@@ -107,7 +98,7 @@ void CHEOS::ParseLine()
 
 										_eMediaStatus nStatus = MSTAT_UNKNOWN;
 
-										if (state == "play") 
+										if (state == "play")
 											nStatus = MSTAT_PLAYING;
 										else if (state == "pause")
 											nStatus = MSTAT_PAUSED;
@@ -115,17 +106,17 @@ void CHEOS::ParseLine()
 											nStatus = MSTAT_STOPPED;
 										else
 											nStatus = MSTAT_ON;
-										
-										std::string	sStatus = "";
-										
+
+										std::string sStatus;
+
 										UpdateNodeStatus(pid, nStatus, sStatus);
-										
+
 										/* If playing request now playing information */
 										if (state == "play") {
 											int PlayerID = atoi(pid.c_str());
 											SendCommand("getNowPlaying", PlayerID);
 										}
-										
+
 										m_lastUpdate = 0;
 									}
 								}
@@ -136,42 +127,42 @@ void CHEOS::ParseLine()
 								{
 									std::vector<std::string> SplitMessage;
 									StringSplit(root["heos"]["message"].asString(), "=", SplitMessage);
-									if (SplitMessage.size() > 0)
+									if (!SplitMessage.empty())
 									{
-										std::string sLabel = "";
-										std::string	sStatus = "";
+										std::string sLabel;
+										std::string sStatus;
 										std::string pid = SplitMessage[1];
 
 										if (root.isMember("payload"))
 										{
-												
-											std::string	sTitle = "";
-											std::string	sAlbum = "";
-											std::string	sArtist = "";
-											std::string	sStation = "";
-											
+
+											std::string sTitle;
+											std::string sAlbum;
+											std::string sArtist;
+											std::string sStation;
+
 											sTitle = root["payload"]["song"].asString();
 											sAlbum = root["payload"]["album"].asString();
 											sArtist = root["payload"]["artist"].asString();
 											sStation = root["payload"]["station"].asString();
-											
-											if(sStation != "")
+
+											if (!sStation.empty())
 											{
 												sLabel = sArtist + " - " + sTitle + " - " + sStation;
 											}
 											else
 											{
 												sLabel = sArtist + " - " + sTitle;
-											}												
+											}
 										}
 										else
 										{
 											sLabel = "(empty playlist)";
 										}
 
-										
+
 										sStatus = sLabel;
-										
+
 										UpdateNodesStatus(pid, sStatus);
 
 										m_lastUpdate = 0;
@@ -184,8 +175,8 @@ void CHEOS::ParseLine()
 					{
 						if (root["heos"].isMember("command"))
 						{
-							if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: Failed: '%s'.", root["heos"]["command"].asCString());
-						}	
+							Debug(DEBUG_HARDWARE, "Failed: '%s'.", root["heos"]["command"].asCString());
+						}
 					}
 				}
 				else
@@ -198,7 +189,7 @@ void CHEOS::ParseLine()
 							{
 								std::vector<std::string> SplitMessage;
 								StringSplit(root["heos"]["message"].asString(), "&", SplitMessage);
-								if (SplitMessage.size() > 0)
+								if (!SplitMessage.empty())
 								{
 									std::vector<std::string> SplitMessagePlayer;
 									StringSplit(SplitMessage[0], "=", SplitMessagePlayer);
@@ -218,7 +209,7 @@ void CHEOS::ParseLine()
 									else
 										nStatus = MSTAT_ON;
 
-									std::string	sStatus = "";
+									std::string sStatus;
 
 									UpdateNodeStatus(pid, nStatus, sStatus);
 
@@ -244,7 +235,7 @@ void CHEOS::ParseLine()
 						{
 							std::vector<std::string> SplitMessage;
 							StringSplit(root["heos"]["message"].asString(), "=", SplitMessage);
-							if (SplitMessage.size() > 0)
+							if (!SplitMessage.empty())
 							{
 								std::string pid = SplitMessage[1];
 								int PlayerID = atoi(pid.c_str());
@@ -268,14 +259,14 @@ void CHEOS::ParseLine()
 			}
 			else
 			{
-				if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: Message not generated by HEOS System.");
+				Debug(DEBUG_HARDWARE, "Message not generated by HEOS System.");
 			}
-			
-		}	
+
+		}
 	}
 	catch (std::exception& e)
 	{
-		_log.Log(LOG_ERROR, "DENON by HEOS: Exception: %s", e.what());
+		Log(LOG_ERROR, "Exception: %s", e.what());
 	}
 }
 
@@ -292,7 +283,7 @@ void CHEOS::SendCommand(const std::string &command)
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	// Unregister for change events
 	if (command == "unRegisterForEvents")
 	{
@@ -307,14 +298,14 @@ void CHEOS::SendCommand(const std::string &command)
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	if (command == "getPlayers")
 	{
 		ssMessage << "heos://player/get_players";
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	/* Group related commands */
 
 	if (command == "getGroups")
@@ -323,26 +314,26 @@ void CHEOS::SendCommand(const std::string &command)
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	/* Process */
-	
+
 	if (sMessage.length())
 	{
 		if (WriteInt(sMessage))
 		{
 			if (systemCall)
 			{
-				if (DEBUG_LOGGING) _log.Log(LOG_NORM, "HEOS by DENON: Sent command: '%s'.", sMessage.c_str());	
+				Debug(DEBUG_HARDWARE, "Sent command: '%s'.", sMessage.c_str());
 			}
 			else
 			{
-				_log.Log(LOG_NORM, "HEOS by DENON: Sent command: '%s'.", sMessage.c_str());				
-			} 			
+				Log(LOG_NORM, "Sent command: '%s'.", sMessage.c_str());
+			}
 		}
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "HEOS by DENON: Command: '%s'. Unknown command.", command.c_str());
+		Log(LOG_ERROR, "Command: '%s'. Unknown command.", command.c_str());
 	}
 }
 
@@ -358,65 +349,65 @@ void CHEOS::SendCommand(const std::string &command, const int iValue)
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	if (command == "getPlayState")
 	{
 		ssMessage << "heos://player/get_play_state?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	if (command == "setPlayStatePlay" || command == "play")
 	{
 		ssMessage << "heos://player/set_play_state?pid=" << iValue << "&state=play";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "setPlayStatePause" || command == "pause")
 	{
 		ssMessage << "heos://player/set_play_state?pid=" << iValue << "&state=pause";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "setPlayStateStop" || command == "stop")
 	{
 		ssMessage << "heos://player/set_play_state?pid=" << iValue << "&state=stop";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "getNowPlaying")
 	{
 		ssMessage << "heos://player/get_now_playing_media?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	if (command == "getVolume")
 	{
 		ssMessage << "heos://player/get_volume?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	if (command == "setVolumeUp")
 	{
 		ssMessage << "heos://player/volume_up?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "setVolumeDown")
 	{
 		ssMessage << "heos://player/volume_down?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "getMute")
 	{
 		ssMessage << "heos://player/get_mute?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	if (command == "setMuteOn")
 	{
 		ssMessage << "heos://player/set_mute?pid=" << iValue << "&state=on";
@@ -428,7 +419,7 @@ void CHEOS::SendCommand(const std::string &command, const int iValue)
 		ssMessage << "heos://player/set_mute?pid=" << iValue << "&state=off";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "toggleMute")
 	{
 		ssMessage << "heos://player/toggle_mute?pid=" << iValue << "";
@@ -441,18 +432,18 @@ void CHEOS::SendCommand(const std::string &command, const int iValue)
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
-	
+
 	/* Set playmode
 	if (command == "setPlayMode")
 	{
-		ssMessage << "heos://player/volume_up?pid=" << iValue << "";
+		ssMessage << "heos://player/get_volume_up?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 		systemCall = true;
 	}
 	*/
 
 	/* Queue related commands */
-	
+
 	if (command == "getQueue")
 	{
 		ssMessage << "heos://player/get_queue?pid=" << iValue << "";
@@ -465,15 +456,15 @@ void CHEOS::SendCommand(const std::string &command, const int iValue)
 		ssMessage << "heos://player/play_next?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 	}
-	
+
 	if (command == "playPrev")
 	{
 		ssMessage << "heos://player/play_previous?pid=" << iValue << "";
 		sMessage = ssMessage.str();
 	}
-	
+
 	/* Process */
-	if (DEBUG_LOGGING) _log.Log(LOG_NORM, "DENON by HEOS: Debug: '%s'.", sMessage.c_str());
+	Debug(DEBUG_HARDWARE, "Debug: '%s'.", sMessage.c_str());
 
 	if (sMessage.length())
 	{
@@ -481,83 +472,67 @@ void CHEOS::SendCommand(const std::string &command, const int iValue)
 		{
 			if (systemCall)
 			{
-				if (DEBUG_LOGGING) _log.Log(LOG_NORM, "HEOS by DENON: Sent command: '%s'.", sMessage.c_str());	
+				Debug(DEBUG_HARDWARE, "Sent command: '%s'.", sMessage.c_str());
 			}
 			else
 			{
-				_log.Log(LOG_NORM, "HEOS by DENON: Sent command: '%s'.", sMessage.c_str());				
-			} 			
+				Log(LOG_NORM, "Sent command: '%s'.", sMessage.c_str());
+			}
 		}
 		else
 		{
-			if (DEBUG_LOGGING) _log.Log(LOG_NORM, "HEOS by DENON: Not Connected - Message not sent: '%s'.", sMessage.c_str());
+			Debug(DEBUG_HARDWARE, "Not Connected - Message not sent: '%s'.", sMessage.c_str());
 		}
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "HEOS by DENON: Command: '%s'. Unknown command.", command.c_str());
+		Log(LOG_ERROR, "Command: '%s'. Unknown command.", command.c_str());
 	}
 }
 
 void CHEOS::Do_Work()
 {
 
-	_log.Log(LOG_STATUS, "HEOS by DENON: Worker started...");
-	
+	Log(LOG_STATUS, "Worker started...");
+
 	ReloadNodes();
-	
-	bool bFirstTime=true;
-	bool bCheckedForPlayers=false;
+
+	bool bCheckedForPlayers = false;
 	int sec_counter = 25;
 	m_lastUpdate = 25;
-
-	while (!m_stoprequested)
+	connect(m_IP, m_usIPPort);
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 		m_lastUpdate++;
 
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat=mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 
-		if (bFirstTime)
+		if (isConnected())
 		{
-			bFirstTime=false;
-			connect(m_IP,m_usIPPort);
-		}
-		else
-		{
-			if ((m_bDoRestart) && (sec_counter % 30 == 0))
+			if (!bCheckedForPlayers)
 			{
-				connect(m_IP,m_usIPPort);
+				// Update all players and groups
+				SendCommand("getPlayers");
+				bCheckedForPlayers = true;
+				// Enable event changes
+				SendCommand("registerForEvents");
 			}
-			update();
-			if (mIsConnected)
+			if (sec_counter % 30 == 0 && m_lastUpdate >= 30)//updates every 30 seconds
 			{
-				if (!bCheckedForPlayers)
+				for (const auto &node : m_nodes)
 				{
-					// Update all players and groups
-					SendCommand("getPlayers");
-					bCheckedForPlayers = true;
-					// Enable event changes
-					SendCommand("registerForEvents");
-				}
-				if (sec_counter % 30 == 0 && m_lastUpdate >= 30)//updates every 30 seconds
-				{
-					bFirstTime=false;
-					std::vector<HEOSNode>::const_iterator itt;
-					for (itt = m_nodes.begin(); itt != m_nodes.end(); ++itt)
-					{
-						SendCommand("getPlayState", itt->DevID);
-					}
+					SendCommand("getPlayState", node.DevID);
 				}
 			}
 		}
 	}
-	
-	_log.Log(LOG_STATUS, "HEOS by DENON: Worker stopped...");
-	
+	terminate();
+
+	Log(LOG_STATUS, "Worker stopped...");
+
 }
 
 _eNotificationTypes	CHEOS::NotificationType(_eMediaStatus nStatus)
@@ -575,69 +550,46 @@ _eNotificationTypes	CHEOS::NotificationType(_eMediaStatus nStatus)
 
 bool CHEOS::StartHardware()
 {
-	m_stoprequested=false;
-	m_bDoRestart=false;
+	RequestStart();
 
 	//force connect the next first time
-	m_retrycntr=RETRY_DELAY;
-	m_bIsStarted=true;
+	m_retrycntr = RETRY_DELAY;
+	m_bIsStarted = true;
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CHEOS::Do_Work, this)));
-	return (m_thread!=NULL);
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
+	return (m_thread != nullptr);
 }
 
 bool CHEOS::StopHardware()
 {
-	m_stoprequested=true;
-	if (isConnected())
+	if (m_thread)
 	{
-		try {
-			disconnect();
-		}
-		catch (...)
-		{
-			//Don't throw from a Stop command
-		}
+		RequestStop();
+		m_thread->join();
+		m_thread.reset();
 	}
-	try {
-		if (m_thread)
-		{
-			m_thread->join();
-		}
-	}
-	catch (...)
-	{
-		//Don't throw from a Stop command
-	}
-	
-	m_bIsStarted=false;
+	m_bIsStarted = false;
 	return true;
 }
 
 void CHEOS::OnConnect()
 {
-	_log.Log(LOG_STATUS, "HEOS by DENON: Connected to: %s:%ld", m_IP.c_str(), m_usIPPort);
-	m_bDoRestart=false;
-	m_bIsStarted=true;
-	m_bufferpos=0;
+	Log(LOG_STATUS, "Connected to: %s:%d", m_IP.c_str(), m_usIPPort);
+	m_bIsStarted = true;
+	m_bufferpos = 0;
 	sOnConnected(this);
 }
 
 void CHEOS::OnDisconnect()
 {
-	_log.Log(LOG_STATUS, "HEOS by DENON: Disconnected");
+	Log(LOG_STATUS, "Disconnected");
 }
 
 void CHEOS::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
-	ParseData(pData,length);
-}
-
-void CHEOS::OnError(const std::exception e)
-{
-	_log.Log(LOG_ERROR, "HEOS by DENON: Error: %s",e.what());
+	ParseData(pData, length);
 }
 
 void CHEOS::OnError(const boost::system::error_code& error)
@@ -650,35 +602,35 @@ void CHEOS::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::timed_out)
 		)
 	{
-		_log.Log(LOG_ERROR, "HEOS by DENON: Can not connect to: %s:%ld", m_IP.c_str(), m_usIPPort);
+		Log(LOG_ERROR, "Can not connect to: %s:%d", m_IP.c_str(), m_usIPPort);
 	}
 	else if (
 		(error == boost::asio::error::eof) ||
 		(error == boost::asio::error::connection_reset)
 		)
 	{
-		_log.Log(LOG_STATUS, "HEOS by DENON: Connection reset!");
+		Log(LOG_STATUS, "Connection reset!");
 	}
 	else
-		_log.Log(LOG_ERROR, "HEOS by DENON: %s", error.message().c_str());
+		Log(LOG_ERROR, "%s", error.message().c_str());
 }
 
 void CHEOS::ParseData(const unsigned char *pData, int Len)
 {
-	int ii=0;
-	while (ii<Len)
+	int ii = 0;
+	while (ii < Len)
 	{
 		const unsigned char c = pData[ii];
-		if(c == 0x0d)
+		if (c == 0x0d)
 		{
 			ii++;
 			continue;
 		}
 
-		if(c == 0x0a || m_bufferpos == sizeof(m_buffer) - 1)
+		if (c == 0x0a || m_bufferpos == sizeof(m_buffer) - 1)
 		{
 			// discard newline, close string, parse line and clear it.
-			if(m_bufferpos > 0) m_buffer[m_bufferpos] = 0;
+			if (m_bufferpos > 0) m_buffer[m_bufferpos] = 0;
 			ParseLine();
 			m_bufferpos = 0;
 		}
@@ -694,7 +646,7 @@ void CHEOS::ParseData(const unsigned char *pData, int Len)
 /*
 bool CHEOS::WriteInt(const unsigned char *pData, const unsigned char Len)
 {
-	if (!mIsConnected)
+	if (!isConnected())
 	{
 		return false;
 	}
@@ -708,14 +660,14 @@ bool CHEOS::WriteInt(const std::string &sendStr)
 	std::stringstream ssSend;
 	std::string	sSend;
 
-	if (!mIsConnected)
+	if (!isConnected())
 	{
 		return false;
 	}
-		
+
 	ssSend << sendStr << "\r\n";
 	sSend = ssSend.str();
-	
+
 	write((const unsigned char*)sSend.c_str(), sSend.size());
 	return true;
 }
@@ -724,13 +676,13 @@ void CHEOS::UpdateNodeStatus(const std::string &DevID, const _eMediaStatus nStat
 {
 	std::vector<std::vector<std::string> > result;
 
-	time_t now = time(0);
+	time_t now = time(nullptr);
 	struct tm ltime;
 	localtime_r(&now, &ltime);
 
 	char szLastUpdate[40];
 	sprintf(szLastUpdate, "%04d-%02d-%02d %02d:%02d:%02d", ltime.tm_year + 1900, ltime.tm_mon + 1, ltime.tm_mday, ltime.tm_hour, ltime.tm_min, ltime.tm_sec);
-	
+
 	result = m_sql.safe_query("UPDATE DeviceStatus SET nValue=%d, sValue='%q', LastUpdate='%q' WHERE (HardwareID == %d) AND (DeviceID == '%q') AND (Unit == 1) AND (SwitchType == %d)",
 		int(nStatus), sStatus.c_str(), szLastUpdate, m_HwdID, DevID.c_str(), STYPE_Media);
 }
@@ -739,13 +691,13 @@ void CHEOS::UpdateNodesStatus(const std::string &DevID, const std::string &sStat
 {
 	std::vector<std::vector<std::string> > result;
 
-	time_t now = time(0);
+	time_t now = time(nullptr);
 	struct tm ltime;
 	localtime_r(&now, &ltime);
 
 	char szLastUpdate[40];
 	sprintf(szLastUpdate, "%04d-%02d-%02d %02d:%02d:%02d", ltime.tm_year + 1900, ltime.tm_mon + 1, ltime.tm_mday, ltime.tm_hour, ltime.tm_min, ltime.tm_sec);
-	
+
 	result = m_sql.safe_query("UPDATE DeviceStatus SET sValue='%q', LastUpdate='%q' WHERE (HardwareID == %d) AND (DeviceID == '%q') AND (Unit == 1) AND (SwitchType == %d)",
 		sStatus.c_str(), szLastUpdate, m_HwdID, DevID.c_str(), STYPE_Media);
 }
@@ -755,24 +707,21 @@ void CHEOS::AddNode(const std::string &Name, const std::string &PlayerID)
 	std::vector<std::vector<std::string> > result;
 
 	result = m_sql.safe_query("SELECT ID FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q')", m_HwdID, PlayerID.c_str());
-	if (result.size()>0) {
+	if (!result.empty()) {
 		int ID = atoi(result[0][0].c_str());
 		UpdateNode(ID, Name);
 		return;
 	}
 
-	m_sql.safe_query(
-		"INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue) "
-		"VALUES (%d, '%q', 1, %d, %d, %d, 1, 12, 255, '%q', 0, 'Unavailable')",
-		m_HwdID, PlayerID.c_str(), int(pTypeLighting2), int(sTypeAC), int(STYPE_Media), Name.c_str());		
-	
+	m_sql.InsertDevice(m_HwdID, PlayerID.c_str(), 1, pTypeLighting2, sTypeAC, STYPE_Media, 0, "Unavailable", Name, 12, 255, 1);
+
 	ReloadNodes();
 }
 
 void CHEOS::UpdateNode(const int ID, const std::string &Name)
 {
-	m_sql.safe_query("UPDATE DeviceStatus SET Name='%q' WHERE (HardwareID==%d) AND (ID=='%d')", Name.c_str(), m_HwdID, ID);	
-	
+	m_sql.safe_query("UPDATE DeviceStatus SET Name='%q' WHERE (HardwareID==%d) AND (ID=='%d')", Name.c_str(), m_HwdID, ID);
+
 	ReloadNodes();
 }
 
@@ -788,7 +737,7 @@ void CHEOS::SetSettings(const int PollIntervalsec, const int PingTimeoutms)
 		m_iPingTimeoutms = PingTimeoutms;
 }
 
-bool CHEOS::WriteToHardware(const char *pdata, const unsigned char length)
+bool CHEOS::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 {
 	const tRBUF *pSen = reinterpret_cast<const tRBUF*>(pdata);
 
@@ -798,34 +747,33 @@ bool CHEOS::WriteToHardware(const char *pdata, const unsigned char length)
 		return false;
 
 	long	DevID = (pSen->LIGHTING2.id3 << 8) | pSen->LIGHTING2.id4;
-	std::vector<HEOSNode>::const_iterator itt;
-	for (itt = m_nodes.begin(); itt != m_nodes.end(); ++itt)
+	for (const auto &node : m_nodes)
 	{
-		if (itt->DevID == DevID)
+		if (node.DevID == DevID)
 		{
-			int iParam = pSen->LIGHTING2.level;
+			//int iParam = pSen->LIGHTING2.level;
 			std::string sParam;
 			switch (pSen->LIGHTING2.cmnd)
 			{
 			case light2_sOn:
-				SendCommand("setPlayStatePlay", itt->DevID);
+				SendCommand("setPlayStatePlay", node.DevID);
 				return true;
 			case light2_sGroupOn:
 			case light2_sOff:
-				SendCommand("setPlayStateStop", itt->DevID);
+				SendCommand("setPlayStateStop", node.DevID);
 				return true;
 			case light2_sGroupOff:
 			case gswitch_sPlay:
-				SendCommand("getNowPlaying", itt->DevID);
-				SendCommand("setPlayStatePlay", itt->DevID);
+				SendCommand("getNowPlaying", node.DevID);
+				SendCommand("setPlayStatePlay", node.DevID);
 				return true;
 			case gswitch_sPlayPlaylist:
 			case gswitch_sPlayFavorites:
 			case gswitch_sStop:
-				SendCommand("setPlayStateStop", itt->DevID);
+				SendCommand("setPlayStateStop", node.DevID);
 				return true;
 			case gswitch_sPause:
-				SendCommand("setPlayStatePause", itt->DevID);
+				SendCommand("setPlayStatePause", node.DevID);
 				return true;
 			case gswitch_sSetVolume:
 			default:
@@ -842,29 +790,26 @@ void CHEOS::ReloadNodes()
 	m_nodes.clear();
 	std::vector<std::vector<std::string> > result;
 	result = m_sql.safe_query("SELECT ID,DeviceID, Name, nValue,sValue FROM DeviceStatus WHERE (HardwareID==%d)", m_HwdID);
-	if (result.size() > 0)
+	if (!result.empty())
 	{
-		_log.Log(LOG_STATUS, "DENON for HEOS: %i players found.", result.size());
-		std::vector<std::vector<std::string> >::const_iterator itt;
-		for (itt = result.begin(); itt != result.end(); ++itt)
+		Log(LOG_STATUS, "%d players found.", (int)result.size());
+		for (const auto &sd : result)
 		{
-			std::vector<std::string> sd = *itt;
-
 			HEOSNode pnode;
 			pnode.ID = atoi(sd[0].c_str());
 			pnode.DevID = atoi(sd[1].c_str());
 			pnode.Name = sd[2];
 			pnode.nStatus = (_eMediaStatus)atoi(sd[3].c_str());
 			pnode.sStatus = sd[4];
-			pnode.LastOK = mytime(NULL);
+			pnode.LastOK = mytime(nullptr);
 
 			m_nodes.push_back(pnode);
 		}
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "DENON for HEOS: No players found.");		
-	}	
+		Log(LOG_ERROR, "No players found.");
+	}
 }
 
 
@@ -881,15 +826,11 @@ namespace http {
 			std::string hwid = request::findValue(&req, "idx");
 			std::string mode1 = request::findValue(&req, "mode1");
 			std::string mode2 = request::findValue(&req, "mode2");
-			if (
-				(hwid == "") ||
-				(mode1 == "") ||
-				(mode2 == "")
-				)
+			if ((hwid.empty()) || (mode1.empty()) || (mode2.empty()))
 				return;
 			int iHardwareID = atoi(hwid.c_str());
 			CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardware(iHardwareID);
-			if (pBaseHardware == NULL)
+			if (pBaseHardware == nullptr)
 				return;
 			if (pBaseHardware->HwdType != HTYPE_HEOS)
 				return;
@@ -904,14 +845,14 @@ namespace http {
 			m_sql.safe_query("UPDATE Hardware SET Mode1=%d, Mode2=%d WHERE (ID == '%q')", iMode1, iMode2, hwid.c_str());
 			pHardware->SetSettings(iMode1, iMode2);
 		}
-	
-		void CWebServer::Cmd_HEOSMediaCommand(WebEmSession & session, const request& req, Json::Value &root)
+
+		void CWebServer::Cmd_HEOSMediaCommand(WebEmSession & /*session*/, const request& req, Json::Value &root)
 		{
 			std::string sIdx = request::findValue(&req, "idx");
 			std::string sAction = request::findValue(&req, "action");
 			if (sIdx.empty())
 				return;
-			int idx = atoi(sIdx.c_str());
+			//int idx = atoi(sIdx.c_str());
 			root["status"] = "OK";
 			root["title"] = "HEOSMediaCommand";
 
@@ -924,14 +865,14 @@ namespace http {
 				_eSwitchType	sType = (_eSwitchType)atoi(result[0][0].c_str());
 				int PlayerID = atoi(result[0][1].c_str());
 				_eHardwareTypes	hType = (_eHardwareTypes)atoi(result[0][2].c_str());
-				int HwID = atoi(result[0][3].c_str());
+				//int HwID = atoi(result[0][3].c_str());
 				// Is the device a media Player?
 				if (sType == STYPE_Media)
 				{
 					switch (hType) {
 					case HTYPE_HEOS:
-						CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(result[0][3].c_str(), HTYPE_HEOS);
-						if (pBaseHardware == NULL)
+						CDomoticzHardwareBase *pBaseHardware = m_mainworker.GetHardwareByIDType(result[0][3], HTYPE_HEOS);
+						if (pBaseHardware == nullptr)
 							return;
 						CHEOS *pHEOS = reinterpret_cast<CHEOS*>(pBaseHardware);
 
@@ -943,5 +884,5 @@ namespace http {
 			}
 		}
 
-	}
-}
+	} // namespace server
+} // namespace http

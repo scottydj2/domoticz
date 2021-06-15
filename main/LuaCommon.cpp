@@ -5,19 +5,14 @@
 #include "../main/LuaCommon.h"
 
 extern "C" {
-#ifdef WITH_EXTERNAL_LUA
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
-#else
-#include "../lua/src/lua.h"
-#include "../lua/src/lualib.h"
-#include "../lua/src/lauxlib.h"
-#endif
 }
 
 #include "../tinyxpath/xpath_processor.h"
-#include "../json/json.h"
+
+#include "json_helper.h"
 #include "SQLHelper.h"
 #include "mainworker.h"
 #include "../hardware/hardwaretypes.h"
@@ -35,7 +30,7 @@ int CLuaCommon::l_domoticz_applyXPath(lua_State* lua_state)
 			std::string xpath = lua_tostring(lua_state, 2);
 
 			TiXmlDocument doc;
-			doc.Parse(buffer.c_str(), 0, TIXML_ENCODING_UTF8);
+			doc.Parse(buffer.c_str(), nullptr, TIXML_ENCODING_UTF8);
 
 			TiXmlElement* root = doc.RootElement();
 			if (!root)
@@ -44,14 +39,15 @@ int CLuaCommon::l_domoticz_applyXPath(lua_State* lua_state)
 				return 0;
 			}
 			TinyXPath::xpath_processor processor(root, xpath.c_str());
+#ifdef WITH_EXTERNAL_TINYXPATH
+			TIXML_STRING xresult = processor.S_compute_xpath();
+#else
 			TiXmlString xresult = processor.S_compute_xpath();
+#endif
 			lua_pushstring(lua_state, xresult.c_str());
 			return 1;
 		}
-		else
-		{
-			_log.Log(LOG_ERROR, "CLuaHandler (applyXPath from LUA) : Incorrect parameters type");
-		}
+		_log.Log(LOG_ERROR, "CLuaHandler (applyXPath from LUA) : Incorrect parameters type");
 	}
 	else
 	{
@@ -71,8 +67,7 @@ int CLuaCommon::l_domoticz_applyJsonPath(lua_State* lua_state)
 			std::string jsonpath = lua_tostring(lua_state, 2);
 
 			Json::Value root;
-			Json::Reader jReader;
-			bool bRet = jReader.parse(buffer, root);
+			bool bRet = ParseJSon(buffer, root);
 			if (!bRet)
 			{
 				_log.Log(LOG_ERROR, "CLuaHandler (applyJsonPath from LUA) : Invalid Json data received");

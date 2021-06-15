@@ -9,7 +9,7 @@
 #include "../main/SQLHelper.h"
 #include "../httpclient/HTTPClient.h"
 #include "../main/mainworker.h"
-#include "../json/json.h"
+#include "../main/json_helper.h"
 
 #define round(a) ( int ) ( a + .5 )
 
@@ -61,7 +61,7 @@ CThermosmart::CThermosmart(const int ID, const std::string &Username, const std:
 {
 	if ((Password == "secret")|| (Password.empty()))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Please update your username/password!...");
+		Log(LOG_ERROR, "Please update your username/password!...");
 	}
 	else
 	{
@@ -77,10 +77,6 @@ CThermosmart::CThermosmart(const int ID, const std::string &Username, const std:
 	Init();
 }
 
-CThermosmart::~CThermosmart(void)
-{
-}
-
 void CThermosmart::SetModes(const int Mode1, const int Mode2, const int Mode3, const int Mode4, const int Mode5, const int Mode6)
 {
 	m_OutsideTemperatureIdx = Mode1;
@@ -90,32 +86,32 @@ void CThermosmart::Init()
 {
 	m_AccessToken = "";
 	m_ThermostatID = "";
-	m_stoprequested = false;
 	m_bDoLogin = true;
 }
 
 bool CThermosmart::StartHardware()
 {
+	RequestStart();
+
 	Init();
 	m_LastMinute = -1;
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CThermosmart::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted=true;
 	sOnConnected(this);
-	return (m_thread!=NULL);
+	return (m_thread != nullptr);
 }
 
 bool CThermosmart::StopHardware()
 {
-	if (m_thread!=NULL)
+	if (m_thread)
 	{
-		assert(m_thread);
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
+		m_thread.reset();
 	}
     m_bIsStarted=false;
-	if (!m_bDoLogin)
-		Logout();
     return true;
 }
 
@@ -123,14 +119,13 @@ bool CThermosmart::StopHardware()
 
 void CThermosmart::Do_Work()
 {
-	_log.Log(LOG_STATUS,"Thermosmart: Worker started...");
+	Log(LOG_STATUS,"Worker started...");
 	int sec_counter = THERMOSMART_POLL_INTERVAL-5;
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat=mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 		if (sec_counter % THERMOSMART_POLL_INTERVAL == 0)
 		{
@@ -138,7 +133,9 @@ void CThermosmart::Do_Work()
 			GetMeterDetails();
 		}
 	}
-	_log.Log(LOG_STATUS,"Thermosmart: Worker stopped...");
+	Logout();
+
+	Log(LOG_STATUS,"Worker stopped...");
 }
 
 bool CThermosmart::GetOutsideTemperatureFromDomoticz(float &tvalue)
@@ -146,15 +143,12 @@ bool CThermosmart::GetOutsideTemperatureFromDomoticz(float &tvalue)
 	if (m_OutsideTemperatureIdx == 0)
 		return false;
 	Json::Value tempjson;
-	std::stringstream sstr;
-	sstr << m_OutsideTemperatureIdx;
-	m_webservers.GetJSonDevices(tempjson, "", "temp", "ID", sstr.str(), "", "", true, false, false, 0, "");
+	m_webservers.GetJSonDevices(tempjson, "", "temp", "ID", std::to_string(m_OutsideTemperatureIdx), "", "", true, false, false, 0, "");
 
 	size_t tsize = tempjson.size();
 	if (tsize < 1)
 		return false;
 
-	Json::Value::const_iterator itt;
 	Json::ArrayIndex rsize = tempjson["result"].size();
 	if (rsize < 1)
 		return false;
@@ -176,7 +170,7 @@ void CThermosmart::SendSetPointSensor(const unsigned char Idx, const float Temp,
 	thermos.id4=Idx;
 	thermos.dunit=0;
 	thermos.temp=Temp;
-	sDecodeRXMessage(this, (const unsigned char *)&thermos, "Setpoint", 255);
+	sDecodeRXMessage(this, (const unsigned char *)&thermos, "Setpoint", 255, nullptr);
 }
 
 bool CThermosmart::Login()
@@ -202,7 +196,7 @@ bool CThermosmart::Login()
 	sURL = THERMOSMART_LOGIN_PATH;
 	if (!HTTPClient::POST(sURL, szPostdata, ExtraHeaders, sResult))
 		{
-			_log.Log(LOG_ERROR,"Thermosmart: Error login!");
+			Log(LOG_ERROR,"Error login!");
 			return false;
 		}
 
@@ -216,7 +210,7 @@ bool CThermosmart::Login()
 	ExtraHeaders.clear();
 	if (!HTTPClient::GET(sURL, sResult))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error login!");
+		Log(LOG_ERROR, "Error login!");
 		return false;
 	}
 
@@ -227,14 +221,14 @@ bool CThermosmart::Login()
 	size_t tpos = sResult.find("value=");
 	if (tpos == std::string::npos)
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error login!, check username/password");
+		Log(LOG_ERROR, "Error login!, check username/password");
 		return false;
 	}
 	sResult = sResult.substr(tpos + 7);
 	tpos = sResult.find("\">");
 	if (tpos == std::string::npos)
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error login!, check username/password");
+		Log(LOG_ERROR, "Error login!, check username/password");
 		return false;
 	}
 	std::string TID = sResult.substr(0, tpos);
@@ -245,7 +239,7 @@ bool CThermosmart::Login()
 	sURL = THERMOSMART_DECISION_PATH;
 	if (!HTTPClient::POST(sURL, szPostdata, ExtraHeaders, sResult, false))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error login!, check username/password");
+		Log(LOG_ERROR, "Error login!, check username/password");
 		return false;
 	}
 
@@ -256,7 +250,7 @@ bool CThermosmart::Login()
 	tpos = sResult.find("code=");
 	if (tpos == std::string::npos)
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error login!, check username/password");
+		Log(LOG_ERROR, "Error login!, check username/password");
 		return false;
 	}
 	std::string CODE = sResult.substr(tpos + 5);
@@ -270,7 +264,7 @@ bool CThermosmart::Login()
 
 	if (!HTTPClient::POST(sURL, szPostdata, ExtraHeaders, sResult, false))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error login!, check username/password");
+		Log(LOG_ERROR, "Error login!, check username/password");
 		return false;
 	}
 
@@ -279,24 +273,23 @@ bool CThermosmart::Login()
 #endif
 
 	Json::Value root;
-	Json::Reader jReader;
-	bool ret = jReader.parse(sResult, root);
+	bool ret = ParseJSon(sResult, root);
 	if ((!ret) || (!root.isObject()))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Invalid/no data received...");
+		Log(LOG_ERROR, "Invalid/no data received...");
 		return false;
 	}
 
 	if (root["access_token"].empty()||root["thermostat"].empty())
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: No access granted, check username/password...");
+		Log(LOG_ERROR, "No access granted, check username/password...");
 		return false;
 	}
 
 	m_AccessToken = root["access_token"].asString();
 	m_ThermostatID = root["thermostat"].asString();
 
-	_log.Log(LOG_STATUS, "Thermosmart: Login successfull!...");
+	Log(LOG_STATUS, "Login successfull!...");
 
 	m_bDoLogin = false;
 	return true;
@@ -338,7 +331,7 @@ void CThermosmart::GetMeterDetails()
 	std::string sResult;
 #ifdef DEBUG_ThermosmartThermostat_read
 	sResult = ReadFile("E:\\thermosmart_getdata.txt");
-#else	
+#else
 	if (m_bDoLogin)
 	{
 		if (!Login())
@@ -349,7 +342,7 @@ void CThermosmart::GetMeterDetails()
 	stdreplace(sURL, "[access_token]", m_AccessToken);
 	if (!HTTPClient::GET(sURL, sResult))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error getting thermostat data!");
+		Log(LOG_ERROR, "Error getting thermostat data!");
 		m_bDoLogin = true;
 		return;
 	}
@@ -359,18 +352,17 @@ void CThermosmart::GetMeterDetails()
 #endif
 #endif
 	Json::Value root;
-	Json::Reader jReader;
-	bool ret = jReader.parse(sResult, root);
+	bool ret = ParseJSon(sResult, root);
 	if ((!ret) || (!root.isObject()))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Invalid/no data received...");
+		Log(LOG_ERROR, "Invalid/no data received...");
 		m_bDoLogin = true;
 		return;
 	}
 
 	if (root["target_temperature"].empty() || root["room_temperature"].empty())
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Invalid/no data received...");
+		Log(LOG_ERROR, "Invalid/no data received...");
 		m_bDoLogin = true;
 		return;
 	}
@@ -391,7 +383,7 @@ void CThermosmart::GetMeterDetails()
 	{
 		std::string actSource = root["source"].asString();
 		bool bPauzeOn = (actSource == "pause");
-		SendSwitch(1, 1, 255, bPauzeOn, 0, "Thermostat Pause");
+		SendSwitch(1, 1, 255, bPauzeOn, 0, "Thermostat Pause", m_Name);
 	}
 }
 
@@ -416,7 +408,7 @@ void CThermosmart::SetSetpoint(const int idx, const float temp)
 	stdreplace(sURL, "[access_token]", m_AccessToken);
 	if (!HTTPClient::PUT(sURL, szPostdata, ExtraHeaders, sResult))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error setting thermostat data!");
+		Log(LOG_ERROR, "Error setting thermostat data!");
 		m_bDoLogin = true;
 		return;
 	}
@@ -445,7 +437,7 @@ void CThermosmart::SetPauseStatus(const bool bIsPause)
 
 	if (!HTTPClient::POST(sURL, szPostdata, ExtraHeaders, sResult))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error setting Pause status!");
+		Log(LOG_ERROR, "Error setting Pause status!");
 		m_bDoLogin = true;
 		return;
 	}
@@ -480,7 +472,7 @@ void CThermosmart::SetOutsideTemp(const float temp)
 	stdreplace(sURL, "[access_token]", m_AccessToken);
 	if (!HTTPClient::PUT(sURL, szPostdata, ExtraHeaders, sResult))
 	{
-		_log.Log(LOG_ERROR, "Thermosmart: Error setting thermostat data!");
+		Log(LOG_ERROR, "Error setting thermostat data!");
 		m_bDoLogin = true;
 		return;
 	}

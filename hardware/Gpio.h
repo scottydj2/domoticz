@@ -32,38 +32,38 @@ Source: http://wiringpi.com
 
 class CGpio : public CDomoticzHardwareBase
 {
-
-public:
-	explicit CGpio(const int ID, const int debounce, const int period, const int pollinterval);
-	~CGpio();
-	bool WriteToHardware(const char *pdata, const unsigned char length);
+      public:
+	explicit CGpio(int ID, int debounce, int period, int pollinterval);
+	~CGpio() override = default;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
+	static CGpioPin *GetPPinById(int id);
 	static std::vector<CGpioPin> GetPinList();
-	static CGpioPin* GetPPinById(int id);
-	uint32_t m_period;
-	uint32_t m_debounce;
-	uint32_t m_pollinterval;
-private:
-	int GPIORead(int pin, const char* param);
+
+      private:
+	int GPIORead(int pin, const char *param);
 	int GPIOReadFd(int fd);
 	int GPIOWrite(int pin, bool value);
-	int GetReadResult(int bytecount, char* value_str);
-	int waitForInterrupt(int fd, const int mS);
-	int SetSchedPriority(const int s, const int pri, const int x);
+	int GetReadResult(int bytecount, char *value_str);
+	int waitForInterrupt(int fd, int mS);
+	int SetSchedPriority(int s, int pri, int x);
 	bool InitPins();
-	bool StartHardware();
-	bool StopHardware();
-	//bool CreateDomoticzDevices();
+	bool StartHardware() override;
+	bool StopHardware() override;
+	// bool CreateDomoticzDevices();
 	void InterruptHandler();
 	void Poller();
 	void UpdateDeviceStates(bool forceUpdate);
 	void UpdateStartup();
-	void UpdateSwitch(const int gpioId, const bool value);
+	void UpdateSwitch(int gpioId, bool value);
 	void GetSchedPriority(int *scheduler, int *priority);
 
-	boost::mutex m_pins_mutex;
-	boost::shared_ptr<boost::thread> m_thread, m_thread_poller, m_thread_updatestartup;
+      private:
+	uint32_t m_period;
+	uint32_t m_debounce;
+	uint32_t m_pollinterval;
+	std::mutex m_pins_mutex;
+	std::shared_ptr<std::thread> m_thread, m_thread_poller, m_thread_updatestartup;
 	static std::vector<CGpioPin> pins;
-	volatile bool m_stoprequested;
 	volatile int pinPass;
 	tRBUF IOPinStatusPacket;
 };

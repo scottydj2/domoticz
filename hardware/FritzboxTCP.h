@@ -1,45 +1,35 @@
 #pragma once
 
-#include <deque>
-#include <iostream>
 #include "ASyncTCP.h"
 #include "DomoticzHardware.h"
 
 class FritzboxTCP : public CDomoticzHardwareBase, ASyncTCP
 {
-public:
-	FritzboxTCP(const int ID, const std::string &IPAddress, const unsigned short usIPPort);
-	~FritzboxTCP(void);
-	bool isConnected(){ return mIsConnected; };
-	bool WriteToHardware(const char *pdata, const unsigned char length);
-public:
-	// signals
-	boost::signals2::signal<void()>	sDisconnected;
-private:
-	int m_retrycntr;
-	bool StartHardware();
-	bool StopHardware();
-	void UpdateSwitch(const unsigned char Idx, const int SubUnit, const bool bOn, const double Level, const std::string &defaultname);
-protected:
-	std::string m_szIPAddress;
-	unsigned short m_usIPPort;
-	bool m_bDoRestart;
+      public:
+	FritzboxTCP(int ID, const std::string &IPAddress, unsigned short usIPPort);
+	~FritzboxTCP() override = default;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
+	boost::signals2::signal<void()> sDisconnected;
 
+      private:
+	bool StartHardware() override;
+	bool StopHardware() override;
+	void UpdateSwitch(unsigned char Idx, uint8_t SubUnit, bool bOn, double Level, const std::string &defaultname);
 	void WriteInt(const std::string &sendStr);
-
-
 	void Do_Work();
-	void OnConnect();
-	void OnDisconnect();
-	void OnData(const unsigned char *pData, size_t length);
-	void OnError(const std::exception e);
-	void OnError(const boost::system::error_code& error);
-
 	void ParseData(const unsigned char *pData, int Len);
 	void ParseLine();
 
-	int m_bufferpos;
-	boost::shared_ptr<boost::thread> m_thread;
-	volatile bool m_stoprequested;
-};
+	void OnConnect() override;
+	void OnDisconnect() override;
+	void OnData(const unsigned char *pData, size_t length) override;
+	void OnError(const boost::system::error_code &error) override;
 
+      private:
+	int m_retrycntr;
+	std::string m_szIPAddress;
+	unsigned short m_usIPPort;
+	int m_bufferpos;
+	std::shared_ptr<std::thread> m_thread;
+	unsigned char m_buffer[1024];
+};

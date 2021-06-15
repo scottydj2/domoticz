@@ -1,25 +1,24 @@
 #include "stdafx.h"
 #include "RFXNames.h"
 #include "RFXtrx.h"
-#include "../hardware/hardwaretypes.h"
 #include "../hardware/EvohomeBase.h"
+#include "../hardware/hardwaretypes.h"
 #include "Helper.h"
-#include <boost/algorithm/string.hpp>
 #include "Logger.h"
 
 typedef struct _STR_TABLE_SINGLE {
 	unsigned long    id;
-	const char   *str1;
-	const char   *str2;
+	const char* str1;
+	const char* str2;
 } STR_TABLE_SINGLE;
 
 typedef struct _STR_TABLE_ID1_ID2 {
 	unsigned long    id1;
 	unsigned long    id2;
-	const char   *str1;
+	const char* str1;
 } STR_TABLE_ID1_ID2;
 
-const char *findTableIDSingle1 (const STR_TABLE_SINGLE *t, const unsigned long id)
+const char* findTableIDSingle1(const STR_TABLE_SINGLE* t, const unsigned long id)
 {
 	while (t->str1) {
 		if (t->id == id)
@@ -29,7 +28,7 @@ const char *findTableIDSingle1 (const STR_TABLE_SINGLE *t, const unsigned long i
 	return "Unknown";
 }
 
-const char *findTableIDSingle2 (const STR_TABLE_SINGLE *t, const unsigned long id)
+const char* findTableIDSingle2(const STR_TABLE_SINGLE* t, const unsigned long id)
 {
 	while (t->str2) {
 		if (t->id == id)
@@ -39,44 +38,39 @@ const char *findTableIDSingle2 (const STR_TABLE_SINGLE *t, const unsigned long i
 	return "Unknown";
 }
 
-const char *findTableID1ID2 (const _STR_TABLE_ID1_ID2 *t, const unsigned long id1, const unsigned long id2)
+const char* findTableID1ID2(const _STR_TABLE_ID1_ID2* t, const unsigned long id1, const unsigned long id2)
 {
 	while (t->str1) {
-		if ( (t->id1 == id1) && (t->id2 == id2) )
+		if ((t->id1 == id1) && (t->id2 == id2))
 			return t->str1;
 		t++;
 	}
 	return "Unknown";
 }
 
-const char *RFX_Humidity_Status_Desc(const unsigned char status)
+const char* RFX_Humidity_Status_Desc(const unsigned char status)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ humstat_normal, "Normal" },
-		{ humstat_comfort, "Comfortable" },
-		{ humstat_dry, "Dry" },
-		{ humstat_wet, "Wet" },
-		{  0,NULL,NULL }
+	static const STR_TABLE_SINGLE Table[] = {
+		{ humstat_normal, "Normal" }, { humstat_comfort, "Comfortable" }, { humstat_dry, "Dry" }, { humstat_wet, "Wet" },
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, status);
+	return findTableIDSingle1(Table, status);
 }
 
 unsigned char Get_Humidity_Level(const unsigned char hlevel)
 {
-	if (hlevel<25)
+	if (hlevel < 25)
 		return humstat_dry;
-	if (hlevel>60)
+	if (hlevel > 60)
 		return humstat_wet;
-	if ((hlevel>=25)&&(hlevel<=60))
+	if ((hlevel >= 25) && (hlevel <= 60))
 		return humstat_comfort;
 	return humstat_normal;
 }
 
-const char *Security_Status_Desc(const unsigned char status)
+const char* Security_Status_Desc(const unsigned char status)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ sStatusNormal, "Normal" },
 		{ sStatusNormalDelayed, "Normal Delayed" },
 		{ sStatusAlarm, "Alarm" },
@@ -104,15 +98,14 @@ const char *Security_Status_Desc(const unsigned char status)
 		{ sStatusAlarmDelayedTamper, "Alarm Delayed + Tamper" },
 		{ sStatusMotionTamper, "Motion + Tamper" },
 		{ sStatusNoMotionTamper, "No Motion + Tamper" },
-		{ 0, NULL }
+		{ 0, nullptr },
 	};
-	return findTableIDSingle1 (Table, status);
+	return findTableIDSingle1(Table, status);
 }
 
-const char *Timer_Type_Desc(const int tType)
+const char* Timer_Type_Desc(const int tType)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ TTYPE_BEFORESUNRISE, "Before Sunrise" },
 		{ TTYPE_AFTERSUNRISE, "After Sunrise" },
 		{ TTYPE_ONTIME, "On Time" },
@@ -121,146 +114,184 @@ const char *Timer_Type_Desc(const int tType)
 		{ TTYPE_FIXEDDATETIME, "Fixed Date/Time" },
 		{ TTYPE_DAYSODD, "Odd Day Numbers" },
 		{ TTYPE_DAYSEVEN, "Even Day Numbers" },
-		{ TTYPE_WEEKSODD, "Odd Week Numbers"},
+		{ TTYPE_WEEKSODD, "Odd Week Numbers" },
 		{ TTYPE_WEEKSEVEN, "Even Week Numbers" },
 		{ TTYPE_MONTHLY, "Monthly" },
 		{ TTYPE_MONTHLY_WD, "Monthly (Weekday)" },
 		{ TTYPE_YEARLY, "Yearly" },
 		{ TTYPE_YEARLY_WD, "Yearly (Weekday)" },
-		{  0,NULL,NULL }
+		{ TTYPE_BEFORESUNATSOUTH, "Before Sun at South" },
+		{ TTYPE_AFTERSUNATSOUTH, "After Sun at South" },
+		{ TTYPE_BEFORECIVTWSTART, "Before Civil Twilight Start" },
+		{ TTYPE_AFTERCIVTWSTART, "After Civil Twilight Start" },
+		{ TTYPE_BEFORECIVTWEND, "Before Civil Twilight End" },
+		{ TTYPE_AFTERCIVTWEND, "After Civil Twilight End" },
+		{ TTYPE_BEFORENAUTTWSTART, "Before Nautical Twilight Start" },
+		{ TTYPE_AFTERNAUTTWSTART, "After Nautical Twilight Start" },
+		{ TTYPE_BEFORENAUTTWEND, "Before Nautical Twilight End" },
+		{ TTYPE_AFTERNAUTTWEND, "After Nautical Twilight End" },
+		{ TTYPE_BEFOREASTTWSTART, "Before Astronomical Twilight Start" },
+		{ TTYPE_AFTERASTTWSTART, "After Astronomical Twilight Start" },
+		{ TTYPE_BEFOREASTTWEND, "Before Astronomical Twilight End" },
+		{ TTYPE_AFTERASTTWEND, "After Astronomical Twilight End" },
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, tType);
+	return findTableIDSingle1(Table, tType);
 }
 
-const char *Timer_Cmd_Desc(const int tType)
+const char* Timer_Cmd_Desc(const int tType)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ TCMD_ON, "On" },
 		{ TCMD_OFF, "Off" },
-		{  0,NULL,NULL }
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, tType);
+	return findTableIDSingle1(Table, tType);
 }
 
-const char *Hardware_Type_Desc(int hType)
+//ID, Long description, short description
+static const STR_TABLE_SINGLE HardwareTypeTable[] = {
+	{ HTYPE_RFXtrx315, "RFXCOM - RFXtrx315 USB 315MHz Transceiver", "RFXCOM" },
+	{ HTYPE_RFXtrx433, "RFXCOM - RFXtrx433 USB 433.92MHz Transceiver", "RFXCOM" },
+	{ HTYPE_RFXLAN, "RFXCOM - RFXtrx shared over LAN interface", "RFXCOM" },
+	{ HTYPE_Domoticz, "Domoticz - Remote Server", "Domoticz Remote" },
+	{ HTYPE_P1SmartMeter, "P1 Smart Meter USB", "P1 Meter" },
+	{ HTYPE_P1SmartMeterLAN, "P1 Smart Meter with LAN interface", "P1 Meter" },
+	{ HTYPE_YouLess, "YouLess Meter with LAN interface", "YouLess" },
+	{ HTYPE_WINDDELEN, "Winddelen", "Winddelen" },
+	{ HTYPE_TE923, "TE923 USB Compatible Weather Station", "TE923" },
+	{ HTYPE_Rego6XX, "Rego 6XX USB/serial interface", "Rego_6XX" },
+	{ HTYPE_TTN_MQTT, "The Things Network (MQTT/CayenneLPP) with LAN interface", "TTN_MQTT" },
+	{ HTYPE_DavisVantage, "Davis Vantage Weather Station USB", "Davis" },
+	{ HTYPE_VOLCRAFTCO20, "Volcraft CO-20 USB air quality sensor", "Voltcraft" },
+	{ HTYPE_1WIRE, "1-Wire (System)", "1-Wire" },
+	{ HTYPE_RaspberryBMP085, "I2C sensor BMP085/180 Temp+Baro", "I2C BM" },
+	{ HTYPE_Wunderground, "Weather Underground", "WU" },
+	{ HTYPE_DarkSky, "DarkSky (Weather Lookup)", "Darksky" },
+	{ HTYPE_Dummy, "Dummy (Does nothing, use for virtual switches only)", "Dummy" },
+	{ HTYPE_Tellstick, "Tellstick", "Tellstick" },
+	{ HTYPE_PiFace, "PiFace - Raspberry Pi IO expansion board", "PiFace" },
+	{ HTYPE_S0SmartMeterUSB, "S0 Meter USB", "S0 Meter" },
+	{ HTYPE_OpenThermGateway, "OpenTherm Gateway USB", "OpenTherm" },
+	{ HTYPE_TeleinfoMeter, "Teleinfo EDF", "TeleInfo" },
+	{ HTYPE_OpenThermGatewayTCP, "OpenTherm Gateway with LAN interface", "OpenTherm" },
+	{ HTYPE_OpenZWave, "OpenZWave USB", "OpenZWave" },
+	{ HTYPE_LimitlessLights, "Limitless/AppLamp/Mi Light with LAN/WiFi interface", "Limitless" },
+	{ HTYPE_System, "Motherboard sensors", "HardwareMonitor" },
+	{ HTYPE_EnOceanESP2, "EnOcean USB (ESP2)", "EnOcean" },
+	{ HTYPE_SolarEdgeTCP, "SolarEdge via LAN interface", "SolarEdge" },
+	{ HTYPE_SBFSpot, "SBFSpot (SMA)", "SBFSpot" },
+	{ HTYPE_ICYTHERMOSTAT, "ICY Thermostat", "ICY" },
+	{ HTYPE_WOL, "Wake-on-LAN", "WOL" },
+	{ HTYPE_PVOUTPUT_INPUT, "PVOutput (Input)", "PVOutput" },
+	{ HTYPE_EnOceanESP3, "EnOcean USB (ESP3)", "EnOcean" },
+	{ HTYPE_RaspberryGPIO, "Raspberry's GPIO port", "GPIO" },
+	{ HTYPE_Meteostick, "Meteostick USB", "Meteostick" },
+	{ HTYPE_TOONTHERMOSTAT, "Toon Thermostat", "Toon" },
+	{ HTYPE_ECODEVICES, "Eco Devices", "Eco" },
+	{ HTYPE_HARMONY_HUB, "Logitech Harmony Hub", "Harmony" },
+	{ HTYPE_Mochad, "Mochad CM15Pro/CM19A bridge with LAN interface", "Mochad" },
+	{ HTYPE_Philips_Hue, "Philips Hue Bridge", "Philips Hue" },
+	{ HTYPE_EVOHOME_SERIAL, "Evohome USB (for HGI/S80)", "EvoHome" },
+	{ HTYPE_EVOHOME_SCRIPT, "Evohome via script", "EvoHome" },
+	{ HTYPE_EVOHOME_WEB, "Evohome via Web API", "EvoHome" },
+	{ HTYPE_EVOHOME_TCP, "Evohome via LAN (remote HGI/S80)", "EvoHome" },
+	{ HTYPE_MySensorsUSB, "MySensors Gateway USB", "MySensors" },
+	{ HTYPE_MySensorsTCP, "MySensors Gateway with LAN interface", "MySensors" },
+	{ HTYPE_MySensorsMQTT, "MySensors Gateway with MQTT interface", "MySensors" },
+	{ HTYPE_MQTT, "MQTT Client Gateway with LAN interface", "MQTT" },
+	{ HTYPE_FRITZBOX, "Fritzbox Callmonitor via LAN interface", "Fritzbox" },
+	{ HTYPE_ETH8020, "ETH8020 Relay board with LAN interface", "ETh8020" },
+	{ HTYPE_RFLINKUSB, "RFLink Gateway USB", "RFLink" },
+	{ HTYPE_KMTronicUSB, "KMTronic Gateway USB", "KMTronic" },
+	{ HTYPE_KMTronicTCP, "KMTronic Gateway with LAN interface", "KMTronic" },
+	{ HTYPE_SOLARMAXTCP, "SolarMax via LAN interface", "SolarMax" },
+	{ HTYPE_KMTronic433, "KMTronic 433MHz Gateway USB", "KMTronic" },
+	{ HTYPE_Pinger, "System Alive Checker (Ping)", "Pinger" },
+	{ HTYPE_NEST, "Nest Thermostat/Protect", "Nest" },
+	{ HTYPE_Nest_OAuthAPI, "Nest Thermostat/Protect OAuth", "Nest" },
+	{ HTYPE_THERMOSMART, "Thermosmart Thermostat", "ThermoSmart" },
+	{ HTYPE_Netatmo, "Netatmo", "Netatmo" },
+	{ HTYPE_Kodi, "Kodi Media Server", "Kodi" },
+	{ HTYPE_PanasonicTV, "PanasonicTV", "PanasonicTV" },
+	{ HTYPE_ANNATHERMOSTAT, "Plugwise Anna Thermostat via LAN interface", "Plugwise" },
+	{ HTYPE_SatelIntegra, "Satel Integra via LAN interface", "Satel Inegra" },
+	{ HTYPE_LogitechMediaServer, "Logitech Media Server", "Logitech Media Server" },
+	{ HTYPE_RFXtrx868, "RFXCOM - RFXtrx868 USB 868MHz Transceiver", "RFXCom 868" },
+	{ HTYPE_RFLINKTCP, "RFLink Gateway with LAN interface", "RFLink" },
+	{ HTYPE_Comm5TCP, "Comm5 MA-5XXX with LAN interface", "Comm5" },
+	{ HTYPE_Comm5SMTCP, "Comm5 SM-XXXX with LAN interface", "Comm5" },
+	{ HTYPE_Comm5Serial, "Comm5 MA-4XXX/MI-XXXX Serial/USB interface", "Comm5" },
+	{ HTYPE_SolarEdgeAPI, "SolarEdge via Web API", "SolarEdge" },
+	{ HTYPE_CurrentCostMeter, "CurrentCost Meter USB", "CurrentCost" },
+	{ HTYPE_CurrentCostMeterLAN, "CurrentCost Meter with LAN interface", "CurrentCost" },
+	{ HTYPE_DomoticzInternal, "Domoticz Internal interface", "Domoticz" },
+	{ HTYPE_NefitEastLAN, "Nefit Easy HTTP server over LAN interface", "Nefit" },
+	{ HTYPE_OpenWebNetTCP, "MyHome OpenWebNet with LAN interface", "MyHome" },
+	{ HTYPE_RaspberryHTU21D, "I2C sensor HTU21D(F)/SI702x Temp+Humidity", "I2C HTU21D" },
+	{ HTYPE_AtagOne, "Atag One Thermostat", "Atag" },
+	{ HTYPE_Sterbox, "Sterbox v2-3 PLC with LAN interface", "Sterbox" },
+	{ HTYPE_HTTPPOLLER, "HTTP/HTTPS poller", "HTTP(S) Poller" },
+	{ HTYPE_RAVEn, "Rainforest RAVEn USB", "Rainforest" },
+	{ HTYPE_S0SmartMeterTCP, "S0 Meter with LAN interface", "S0 Meter" },
+	{ HTYPE_BuienRadar, "Buienradar (Dutch Weather Information)", "BuienRadar" },
+	{ HTYPE_AccuWeather, "AccuWeather (Weather Lookup)", "AccuWeather" },
+	{ HTYPE_Tesla, "Tesla Model S/3/X", "Tesla" },
+	{ HTYPE_Mercedes, "Mercedes ME Connect", "Mercedes" },
+	{ HTYPE_BleBox, "BleBox devices", "BleBox" },
+	{ HTYPE_Ec3kMeterTCP, "Energy Count 3000/ NETBSEM4/ La Crosse RT-10 LAN", "Ec3kMeter" },
+	{ HTYPE_OpenWeatherMap, "Open Weather Map", "OpenWeatherMap" },
+	{ HTYPE_GoodweAPI, "Goodwe solar inverter via Web API", "Goodwe" },
+	{ HTYPE_RaspberryTSL2561, "I2C sensor TSL2561 Illuminance", "I2C TSL2561" },
+	{ HTYPE_Daikin, "Daikin Airconditioning with LAN (HTTP) interface", "Daikin" },
+	{ HTYPE_HEOS, "HEOS by DENON", "HEOS" },
+	{ HTYPE_MultiFun, "MultiFun LAN", "Multifun" },
+	{ HTYPE_ZIBLUEUSB, "ZiBlue RFPlayer USB", "ZiBlue" },
+	{ HTYPE_ZIBLUETCP, "ZiBlue RFPlayer with LAN interface", "ZiBlue" },
+	{ HTYPE_Yeelight, "YeeLight LED", "YeeLight" },
+	{ HTYPE_RaspberryPCF8574, "I2C sensor PIO 8bit expander PCF8574(A)", "I2C PCF8574" },
+	{ HTYPE_PythonPlugin, "Python Plugin System", "Python Plugin System" },
+	{ HTYPE_XiaomiGateway, "Xiaomi Gateway", "Xiaomi" },
+	{ HTYPE_RaspberryBME280, "I2C sensor BME280 Temp+Hum+Baro", "I2C BME" },
+	{ HTYPE_Arilux, "Arilux AL-LC0x", "Arilux" },
+	{ HTYPE_OpenWebNetUSB, "MyHome OpenWebNet USB", "MyHome" },
+	{ HTYPE_IntergasInComfortLAN2RF, "Intergas InComfort LAN2RF Gateway", "InComfort" },
+	{ HTYPE_RelayNet, "Relay-Net 8 channel LAN Relay and binary Input module", "Relay-Net" },
+	{ HTYPE_KMTronicUDP, "KMTronic Gateway with LAN/UDP interface", "KMTronic" },
+	{ HTYPE_SysfsGpio, "Generic sysfs GPIO", "sysfs" },
+	{ HTYPE_Rtl433, "Rtl433 RTL-SDR receiver", "RTL433" },
+	{ HTYPE_OnkyoAVTCP, "Onkyo AV Receiver (LAN)", "Onkyo AV" },
+	{ HTYPE_RESERVED_FOR_YOU_2, "", "" },
+	{ HTYPE_USBtinGateway, "USBtin Can Gateway", "USBtin" },
+	{ HTYPE_EnphaseAPI, "Enphase Envoy with LAN (HTTP) interface", "Enphase" },
+	{ HTYPE_RaspberryMCP23017, "I2C sensor GPIO 16bit expander MCP23017", "I2C GPIO" },
+	{ HTYPE_eHouseTCP, "eHouse UDP+TCP with LAN interface", "eHouse" },
+	{ HTYPE_EcoCompteur, "EcoCompteur Legrand with LAN interface", "EcoCompteur" },
+	{ HTYPE_Honeywell, "Honeywell Thermostat", "Honeywell" },
+	{ HTYPE_Tado, "Tado Thermostat", "Tado" },
+	{ HTYPE_DenkoviHTTPDevices, "Denkovi Modules with LAN (HTTP) Interface", "Denkovi" },
+	{ HTYPE_DenkoviUSBDevices, "Denkovi Modules with USB Interface", "Denkovi" },
+	{ HTYPE_DenkoviTCPDevices, "Denkovi Modules with LAN (TCP) Interface", "Denkovi" },
+	{ HTYPE_OctoPrint, "OctoPrint (MQTT/Gina Haussge) with LAN interface", "OctoPrint" },
+	{ HTYPE_Meteorologisk, "Meteorologisk institutt Norway (Weather Lookup)", "Meteorologisk" },
+	{ HTYPE_AirconWithMe, "AirconWithMe Wifi Airco module", "AirconWithMe" },
+	{ HTYPE_TeleinfoMeterTCP, "Teleinfo EDF with LAN interface", "TeleInfo" },
+	{ 0, nullptr, nullptr },
+};
+
+const char* Hardware_Type_Desc(int hType)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ HTYPE_RFXtrx315, "RFXCOM - RFXtrx315 USB 315MHz Transceiver" },
-		{ HTYPE_RFXtrx433, "RFXCOM - RFXtrx433 USB 433.92MHz Transceiver" },
-		{ HTYPE_RFXLAN, "RFXCOM - RFXtrx shared over LAN interface" },
-		{ HTYPE_Domoticz, "Domoticz - Remote Server" },
-		{ HTYPE_P1SmartMeter, "P1 Smart Meter USB" },
-		{ HTYPE_P1SmartMeterLAN, "P1 Smart Meter with LAN interface" },
-		{ HTYPE_YouLess, "YouLess Meter with LAN interface" },
-		{ HTYPE_WINDDELEN, "Winddelen" },
-		{ HTYPE_TE923, "TE923 USB Compatible Weather Station" },
-		{ HTYPE_Rego6XX, "Rego 6XX USB/serial interface" },
-		{ HTYPE_RazberryZWave, "Razberry Z-Wave via LAN interface (Deprecated)" },
-		{ HTYPE_DavisVantage, "Davis Vantage Weather Station USB" },
-		{ HTYPE_VOLCRAFTCO20, "Volcraft CO-20 USB air quality sensor" },
-		{ HTYPE_1WIRE, "1-Wire (System)" },
-		{ HTYPE_RaspberryBMP085, "I2C sensor BMP085/180 Temp+Baro" },
-		{ HTYPE_Wunderground, "Weather Underground" },
-		{ HTYPE_DarkSky, "DarkSky (Weather Lookup)" },
-		{ HTYPE_Dummy, "Dummy (Does nothing, use for virtual switches only)" },
-		{ HTYPE_Tellstick, "Tellstick" },
-		{ HTYPE_PiFace, "PiFace - Raspberry Pi IO expansion board" },
-		{ HTYPE_S0SmartMeterUSB, "S0 Meter USB" },
-		{ HTYPE_OpenThermGateway, "OpenTherm Gateway USB" },
-		{ HTYPE_TeleinfoMeter, "Teleinfo EDF" },
-		{ HTYPE_OpenThermGatewayTCP, "OpenTherm Gateway with LAN interface" },
-		{ HTYPE_OpenZWave, "OpenZWave USB" },
-		{ HTYPE_LimitlessLights, "Limitless/AppLamp/Mi Light with LAN/WiFi interface" },
-		{ HTYPE_System, "Motherboard sensors" },
-		{ HTYPE_EnOceanESP2, "EnOcean USB (ESP2)" },
-		{ HTYPE_SolarEdgeTCP, "SolarEdge via LAN interface" },
-		{ HTYPE_SBFSpot, "SBFSpot (SMA)" },
-		{ HTYPE_ICYTHERMOSTAT, "ICY Thermostat" },
-		{ HTYPE_WOL, "Wake-on-LAN" },
-		{ HTYPE_PVOUTPUT_INPUT, "PVOutput (Input)" },
-		{ HTYPE_EnOceanESP3, "EnOcean USB (ESP3)" },
-		{ HTYPE_RaspberryGPIO, "Raspberry's GPIO port" },
-		{ HTYPE_Meteostick, "Meteostick USB" },
-		{ HTYPE_TOONTHERMOSTAT, "Toon Thermostat" },
-		{ HTYPE_ECODEVICES, "Eco Devices" },
-		{ HTYPE_HARMONY_HUB, "Logitech Harmony Hub" },
-		{ HTYPE_Mochad, "Mochad CM15Pro/CM19A bridge with LAN interface" },
-		{ HTYPE_Philips_Hue, "Philips Hue Bridge" },
-		{ HTYPE_EVOHOME_SERIAL, "Evohome USB (for HGI/S80)" },
-		{ HTYPE_EVOHOME_SCRIPT, "Evohome via script" },
-		{ HTYPE_EVOHOME_WEB, "Evohome via Web API" },
-		{ HTYPE_MySensorsUSB, "MySensors Gateway USB" },
-		{ HTYPE_MySensorsTCP, "MySensors Gateway with LAN interface" },
-		{ HTYPE_MySensorsMQTT, "MySensors Gateway with MQTT interface" },
-		{ HTYPE_MQTT, "MQTT Client Gateway with LAN interface" },
-		{ HTYPE_FRITZBOX, "Fritzbox Callmonitor via LAN interface" },
-		{ HTYPE_ETH8020, "ETH8020 Relay board with LAN interface" },
-		{ HTYPE_RFLINKUSB, "RFLink Gateway USB" },
-		{ HTYPE_KMTronicUSB, "KMTronic Gateway USB" },
-		{ HTYPE_KMTronicTCP, "KMTronic Gateway with LAN interface" },
-		{ HTYPE_SOLARMAXTCP, "SolarMax via LAN interface" },
-		{ HTYPE_KMTronic433, "KMTronic 433MHz Gateway USB" },
-		{ HTYPE_Pinger, "System Alive Checker (Ping)" },
-		{ HTYPE_NEST, "Nest Thermostat/Protect" },
-		{ HTYPE_THERMOSMART, "Thermosmart Thermostat" },
-		{ HTYPE_Netatmo, "Netatmo" },
-		{ HTYPE_Kodi, "Kodi Media Server" },
-		{ HTYPE_PanasonicTV, "PanasonicTV" },
-		{ HTYPE_ANNATHERMOSTAT, "Plugwise Anna Thermostat via LAN interface" },
-		{ HTYPE_SatelIntegra, "Satel Integra via LAN interface" },
-		{ HTYPE_LogitechMediaServer, "Logitech Media Server" },
-		{ HTYPE_RFXtrx868, "RFXCOM - RFXtrx868 USB 868MHz Transceiver" },
-		{ HTYPE_RFLINKTCP, "RFLink Gateway with LAN interface" },
-		{ HTYPE_Comm5TCP, "Comm5 MA-5XXX with LAN interface" },
-		{ HTYPE_Comm5Serial, "Comm5 MA-4XXX/MI-XXXX Serial/USB interface" },
-		{ HTYPE_SolarEdgeAPI , "SolarEdge via Web API" },
-		{ HTYPE_CurrentCostMeter, "CurrentCost Meter USB" },
-		{ HTYPE_CurrentCostMeterLAN, "CurrentCost Meter with LAN interface" },
-		{ HTYPE_DomoticzInternal, "Domoticz Internal interface" },
-		{ HTYPE_NefitEastLAN, "Nefit Easy HTTP server over LAN interface" },
-		{ HTYPE_OpenWebNetTCP, "MyHome OpenWebNet with LAN interface" },
-		{ HTYPE_RaspberryHTU21D, "I2C sensor HTU21D(F)/SI702x Humidity+Temp" },
-		{ HTYPE_AtagOne, "Atag One Thermostat" },
-		{ HTYPE_Sterbox, "Sterbox v2-3 PLC with LAN interface" },
-		{ HTYPE_HTTPPOLLER, "HTTP/HTTPS poller" },
-		{ HTYPE_RAVEn, "Rainforest RAVEn USB" },
-		{ HTYPE_S0SmartMeterTCP, "S0 Meter with LAN interface" },
-		{ HTYPE_DenkoviSmartdenLan, "Denkovi Smartden with LAN interface" },
-		{ HTYPE_AccuWeather, "AccuWeather (Weather Lookup)" },
-		{ HTYPE_BleBox, "BleBox devices" },
-		{ HTYPE_Ec3kMeterTCP, "Energy Count 3000/ NETBSEM4/ La Crosse RT-10 LAN" },
-		{ HTYPE_OpenWeatherMap, "Open Weather Map" },
-		{ HTYPE_GoodweAPI, "Goodwe solar inverter via Web API" },
-		{ HTYPE_RaspberryTSL2561, "I2C sensor TSL2561 Illuminance" },
-		{ HTYPE_Daikin, "Daikin Airconditioning with LAN (HTTP) interface" },
-		{ HTYPE_HEOS, "HEOS by DENON" },
-		{ HTYPE_MultiFun, "MultiFun LAN" },
-		{ HTYPE_ZIBLUEUSB, "ZiBlue RFPlayer USB" },
-		{ HTYPE_ZIBLUETCP, "ZiBlue RFPlayer with LAN interface" },
-		{ HTYPE_Yeelight, "YeeLight LED" },
-		{ HTYPE_RaspberryPCF8574, "I2C sensor PIO 8bit expander PCF8574 or PCF8574A" },
-		{ HTYPE_PythonPlugin, "Python Plugin System" },
-		{ HTYPE_XiaomiGateway, "Xiaomi Gateway" },
-		{ HTYPE_RaspberryBME280, "I2C sensor BME280 Temp+Hum+Baro" },
-		{ HTYPE_Arilux, "Arilux AL-LC0x" },
-		{ HTYPE_OpenWebNetUSB, "MyHome OpenWebNet USB" },
-		{ HTYPE_IntergasInComfortLAN2RF, "Intergas InComfort LAN2RF Gateway" },
-		{ HTYPE_RelayNet, "Relay-Net 8 channel LAN Relay and binary Input module" },
-		{ HTYPE_KMTronicUDP, "KMTronic Gateway with LAN/UDP interface" },
-		{ HTYPE_SysfsGpio, "Generic sysfs GPIO" },
-		{ HTYPE_Rtl433, "Rtl433 RTL-SDR receiver" },
-		{ HTYPE_OnkyoAVTCP, "Onkyo AV Receiver (LAN)" },
-		{ 0, NULL, NULL }
-	};
-	return findTableIDSingle1 (Table, hType);
+	return findTableIDSingle1(HardwareTypeTable, hType);
 }
 
-const char *Switch_Type_Desc(const _eSwitchType sType)
+const char* Hardware_Short_Desc(int hType)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	return findTableIDSingle2(HardwareTypeTable, hType);
+}
+
+const char* Switch_Type_Desc(const _eSwitchType sType)
+{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ STYPE_OnOff, "On/Off" },
 		{ STYPE_Doorbell, "Doorbell" },
 		{ STYPE_Contact, "Contact" },
@@ -281,36 +312,36 @@ const char *Switch_Type_Desc(const _eSwitchType sType)
 		{ STYPE_Media, "Media Player" },
 		{ STYPE_Selector, "Selector" },
 		{ STYPE_DoorLock, "Door Lock" },
-		{ 0, NULL, NULL }
+		{ STYPE_DoorLockInverted, "Door Lock Inverted" },
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, sType);
+	return findTableIDSingle1(Table, sType);
 }
 
-const char *Meter_Type_Desc(const _eMeterType sType)
+const char* Meter_Type_Desc(const _eMeterType sType)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ MTYPE_ENERGY, "Energy" },
 		{ MTYPE_GAS, "Gas" },
 		{ MTYPE_WATER, "Water" },
 		{ MTYPE_COUNTER, "Counter" },
 		{ MTYPE_ENERGY_GENERATED, "Energy Generated" },
-		{  0,NULL,NULL }
+		{ MTYPE_TIME, "Time" },
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, sType);
+	return findTableIDSingle1(Table, sType);
 }
 
-const char *Notification_Type_Desc(const int nType, const unsigned char snum)
+const char* Notification_Type_Desc(const int nType, const unsigned char snum)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ NTYPE_TEMPERATURE, "Temperature","T" },
-		{ NTYPE_HUMIDITY, "Humidity","H" },
-		{ NTYPE_RAIN, "Rain","R" },
-		{ NTYPE_UV, "UV","U" },
-		{ NTYPE_WIND, "Wind","W" },
-		{ NTYPE_USAGE, "Usage","M" },
-		{ NTYPE_BARO, "Baro","B" },
+	static const STR_TABLE_SINGLE Table[] = {
+		{ NTYPE_TEMPERATURE, "Temperature", "T" },
+		{ NTYPE_HUMIDITY, "Humidity", "H" },
+		{ NTYPE_RAIN, "Rain", "R" },
+		{ NTYPE_UV, "UV", "U" },
+		{ NTYPE_WIND, "Wind", "W" },
+		{ NTYPE_USAGE, "Usage", "M" },
+		{ NTYPE_BARO, "Baro", "B" },
 		{ NTYPE_SWITCH_ON, "Switch On", "S" },
 		{ NTYPE_AMPERE1, "Ampere 1", "1" },
 		{ NTYPE_AMPERE2, "Ampere 2", "2" },
@@ -331,36 +362,34 @@ const char *Notification_Type_Desc(const int nType, const unsigned char snum)
 		{ NTYPE_STOPPED, "Stop Stream", "Q" },
 		{ NTYPE_PLAYING, "Play Stream", "a" },
 		{ NTYPE_VALUE, "Value", "F" },
-		{ NTYPE_LASTUPDATE, "Last Update", "J"},
-		{  0,NULL,NULL }
+		{ NTYPE_LASTUPDATE, "Last Update", "J" },
+		{ 0, nullptr, nullptr },
 	};
-	if (snum==0)
-		return findTableIDSingle1 (Table, nType);
-	else
-		return findTableIDSingle2 (Table, nType);
+	if (snum == 0)
+		return findTableIDSingle1(Table, nType);
+	return findTableIDSingle2(Table, nType);
 }
 
-const char *Notification_Type_Label(const int nType)
+const char* Notification_Type_Label(const int nType)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ NTYPE_TEMPERATURE, "degrees" },
-		{ NTYPE_HUMIDITY, "%%" },
+		{ NTYPE_HUMIDITY, "%" },
 		{ NTYPE_RAIN, "mm" },
 		{ NTYPE_UV, "UVI" },
 		{ NTYPE_WIND, "m/s" },
 		{ NTYPE_USAGE, "" },
 		{ NTYPE_BARO, "hPa" },
 		{ NTYPE_SWITCH_ON, "" },
-		{ NTYPE_AMPERE1, "Ampere"},
-		{ NTYPE_AMPERE2, "Ampere"},
+		{ NTYPE_AMPERE1, "Ampere" },
+		{ NTYPE_AMPERE2, "Ampere" },
 		{ NTYPE_AMPERE3, "Ampere" },
 		{ NTYPE_ENERGYINSTANT, "Watt" },
 		{ NTYPE_TODAYENERGY, "kWh" },
 		{ NTYPE_TODAYGAS, "m3" },
 		{ NTYPE_TODAYCOUNTER, "cnt" },
 		{ NTYPE_SWITCH_OFF, "On" },
-		{ NTYPE_PERCENTAGE, "%%" },
+		{ NTYPE_PERCENTAGE, "%" },
 		{ NTYPE_RPM, "RPM" },
 		{ NTYPE_DEWPOINT, "degrees" },
 		{ NTYPE_SETPOINT, "degrees" },
@@ -372,48 +401,41 @@ const char *Notification_Type_Label(const int nType)
 		{ NTYPE_PLAYING, "" },
 		{ NTYPE_VALUE, "" },
 		{ NTYPE_LASTUPDATE, "minutes" },
-		{  0,NULL,NULL }
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, nType);
+	return findTableIDSingle1(Table, nType);
 }
 
-const char *RFX_Forecast_Desc(const unsigned char Forecast)
+const char* RFX_Forecast_Desc(const unsigned char Forecast)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ baroForecastNoInfo, "No Info" },
-		{ baroForecastSunny, "Sunny" },
-		{ baroForecastPartlyCloudy, "Partly Cloudy" },
-		{ baroForecastCloudy, "Cloudy" },
-		{ baroForecastRain, "Rain" },
-		{  0,NULL,NULL }
+	static const STR_TABLE_SINGLE Table[] = {
+		{ baroForecastNoInfo, "No Info" }, { baroForecastSunny, "Sunny" }, { baroForecastPartlyCloudy, "Partly Cloudy" },
+		{ baroForecastCloudy, "Cloudy" },  { baroForecastRain, "Rain" },   { 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, Forecast);
+	return findTableIDSingle1(Table, Forecast);
 }
 
-const char *RFX_WSForecast_Desc(const unsigned char Forecast)
+const char* RFX_WSForecast_Desc(const unsigned char Forecast)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ wsbaroforcast_heavy_snow,"Heavy Snow" },
-		{ wsbaroforcast_snow, "Snow" },
-		{ wsbaroforcast_heavy_rain, "Heavy Rain" },
-		{ wsbaroforcast_rain, "Rain" },
-		{ wsbaroforcast_cloudy, "Cloudy" },
-		{ wsbaroforcast_some_clouds, "Some Clouds" },
-		{ wsbaroforcast_sunny, "Sunny" },
-		{ wsbaroforcast_unknown, "Unknown" },
-		{ wsbaroforcast_unstable, "Unstable" },
-		{ wsbaroforcast_stable, "Stable" },
-		{ 0, NULL, NULL }
+	static const STR_TABLE_SINGLE Table[] = {
+		{ wsbaroforecast_heavy_snow, "Heavy Snow" },
+		{ wsbaroforecast_snow, "Snow" },
+		{ wsbaroforecast_heavy_rain, "Heavy Rain" },
+		{ wsbaroforecast_rain, "Rain" },
+		{ wsbaroforecast_cloudy, "Cloudy" },
+		{ wsbaroforecast_some_clouds, "Some Clouds" },
+		{ wsbaroforecast_sunny, "Sunny" },
+		{ wsbaroforecast_unknown, "Unknown" },
+		{ wsbaroforecast_unstable, "Unstable" },
+		{ wsbaroforecast_stable, "Stable" },
+		{ 0, nullptr, nullptr },
 	};
-	return findTableIDSingle1 (Table, Forecast);
+	return findTableIDSingle1(Table, Forecast);
 }
 
-const char *BMP_Forecast_Desc(const unsigned char Forecast)
+const char* BMP_Forecast_Desc(const unsigned char Forecast)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ bmpbaroforecast_stable, "Stable" },
 		{ bmpbaroforecast_sunny, "Sunny" },
 		{ bmpbaroforecast_cloudy, "Cloudy" },
@@ -421,90 +443,115 @@ const char *BMP_Forecast_Desc(const unsigned char Forecast)
 		{ bmpbaroforecast_thunderstorm, "Thunderstorm" },
 		{ bmpbaroforecast_unknown, "Unknown" },
 		{ bmpbaroforecast_rain, "Cloudy/Rain" },
-		{ 0, NULL, NULL }
+		{ 0, nullptr, nullptr },
 	};
 	return findTableIDSingle1(Table, Forecast);
 }
 
-const char *RFX_Type_Desc(const unsigned char i, const unsigned char snum)
+const char* RFX_Type_Desc(const unsigned char i, const unsigned char snum)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
+	static const STR_TABLE_SINGLE Table[] = {
 		{ pTypeInterfaceControl, "Interface Control", "unknown" },
 		{ pTypeInterfaceMessage, "Interface Message", "unknown" },
 		{ pTypeRecXmitMessage, "Receiver/Transmitter Message", "unknown" },
 		{ pTypeUndecoded, "Undecoded RF Message", "unknown" },
-		{ pTypeLighting1, "Lighting 1" , "lightbulb", },
-		{ pTypeLighting2, "Lighting 2" , "lightbulb", },
-		{ pTypeLighting3, "Lighting 3" , "lightbulb", },
-		{ pTypeLighting4, "Lighting 4" , "lightbulb", },
-		{ pTypeLighting5, "Lighting 5" , "lightbulb", },
-		{ pTypeLighting6, "Lighting 6" , "lightbulb", },
-		{ pTypeHomeConfort, "Home Confort" , "lightbulb" },
-		{ pTypeLimitlessLights, "Lighting Limitless/Applamp" , "lightbulb" },
-		{ pTypeCurtain, "Curtain" , "blinds" },
-		{ pTypeBlinds, "Blinds" , "blinds" },
+		{
+			pTypeLighting1,
+			"Lighting 1",
+			"lightbulb",
+		},
+		{
+			pTypeLighting2,
+			"Lighting 2",
+			"lightbulb",
+		},
+		{
+			pTypeLighting3,
+			"Lighting 3",
+			"lightbulb",
+		},
+		{
+			pTypeLighting4,
+			"Lighting 4",
+			"lightbulb",
+		},
+		{
+			pTypeLighting5,
+			"Lighting 5",
+			"lightbulb",
+		},
+		{
+			pTypeLighting6,
+			"Lighting 6",
+			"lightbulb",
+		},
+		{ pTypeHomeConfort, "Home Confort", "lightbulb" },
+		{ pTypeColorSwitch, "Color Switch", "lightbulb" },
+		{ pTypeCurtain, "Curtain", "blinds" },
+		{ pTypeBlinds, "Blinds", "blinds" },
 		{ pTypeSecurity1, "Security", "security" },
 		{ pTypeSecurity2, "Security", "security" },
 		{ pTypeCamera, "Camera", "unknown" },
-		{ pTypeRemote, "Remote & IR" , "unknown" },
-		{ pTypeThermostat1, "Thermostat 1" , "temperature" },
-		{ pTypeThermostat2, "Thermostat 2" , "temperature" },
-		{ pTypeThermostat3, "Thermostat 3" , "temperature" },
-		{ pTypeThermostat4, "Thermostat 4" , "temperature" },
+		{ pTypeRemote, "Remote & IR", "unknown" },
+		{ pTypeThermostat1, "Thermostat 1", "temperature" },
+		{ pTypeThermostat2, "Thermostat 2", "temperature" },
+		{ pTypeThermostat3, "Thermostat 3", "temperature" },
+		{ pTypeThermostat4, "Thermostat 4", "temperature" },
 		{ pTypeRadiator1, "Radiator 1", "temperature" },
 		{ pTypeTEMP, "Temp", "temperature" },
-		{ pTypeHUM, "Humidity" , "temperature" },
-		{ pTypeTEMP_HUM, "Temp + Humidity" , "temperature" },
-		{ pTypeBARO, "Barometric" , "temperature" },
-		{ pTypeTEMP_HUM_BARO, "Temp + Humidity + Baro" , "temperature" },
-		{ pTypeRAIN, "Rain" , "rain" },
-		{ pTypeWIND, "Wind" , "wind" },
-		{ pTypeUV, "UV" , "uv" },
-		{ pTypeDT, "Date/Time" , "unknown" },
-		{ pTypeCURRENT, "Current" , "current" },
-		{ pTypeENERGY, "Energy" , "current" },
-		{ pTypeCURRENTENERGY, "Current/Energy" , "current" },
-		{ pTypeGAS, "Gas" , "counter" },
-		{ pTypeWATER, "Water" , "counter" },
-		{ pTypeWEIGHT, "Weight" , "scale" },
-		{ pTypeRFXSensor, "RFXSensor" , "unknown" },
-		{ pTypeRFXMeter, "RFXMeter" , "counter" },
-		{ pTypeP1Power, "P1 Smart Meter" , "counter" },
-		{ pTypeP1Gas, "P1 Smart Meter" , "counter" },
+		{ pTypeHUM, "Humidity", "temperature" },
+		{ pTypeTEMP_HUM, "Temp + Humidity", "temperature" },
+		{ pTypeBARO, "Barometric", "temperature" },
+		{ pTypeTEMP_HUM_BARO, "Temp + Humidity + Baro", "temperature" },
+		{ pTypeRAIN, "Rain", "rain" },
+		{ pTypeWIND, "Wind", "wind" },
+		{ pTypeUV, "UV", "uv" },
+		{ pTypeDT, "Date/Time", "unknown" },
+		{ pTypeCURRENT, "Current", "current" },
+		{ pTypeENERGY, "Energy", "current" },
+		{ pTypeCURRENTENERGY, "Current/Energy", "current" },
+		{ pTypeGAS, "Gas", "counter" },
+		{ pTypeWATER, "Water", "counter" },
+		{ pTypeWEIGHT, "Weight", "scale" },
+		{ pTypeRFXSensor, "RFXSensor", "unknown" },
+		{ pTypeRFXMeter, "RFXMeter", "counter" },
+		{ pTypeP1Power, "P1 Smart Meter", "counter" },
+		{ pTypeP1Gas, "P1 Smart Meter", "counter" },
 		{ pTypeYouLess, "YouLess Meter", "counter" },
-		{ pTypeFS20, "FS20" , "unknown" },
-		{ pTypeRego6XXTemp, "Temp" , "temperature" },
-		{ pTypeRego6XXValue, "Value" , "utility" },
-		{ pTypeAirQuality, "Air Quality" , "air" },
-		{ pTypeUsage, "Usage" , "current" },
-		{ pTypeTEMP_BARO, "Temp + Baro" , "temperature" },
-		{ pTypeLux, "Lux" , "lux" },
-		{ pTypeGeneral, "General" , "General" },
-		{ pTypeThermostat, "Thermostat" , "thermostat" },
-		{ pTypeTEMP_RAIN, "Temp + Rain" , "Temp + Rain" },
-		{ pTypeChime, "Chime" , "doorbell" },
-		{ pTypeFan, "Fan" , "fan" },
+		{ pTypeFS20, "FS20", "lightbulb" },
+		{ pTypeRego6XXTemp, "Temp", "temperature" },
+		{ pTypeRego6XXValue, "Value", "utility" },
+		{ pTypeAirQuality, "Air Quality", "air" },
+		{ pTypeUsage, "Usage", "current" },
+		{ pTypeTEMP_BARO, "Temp + Baro", "temperature" },
+		{ pTypeLux, "Lux", "lux" },
+		{ pTypeGeneral, "General", "General" },
+		{ pTypeThermostat, "Thermostat", "thermostat" },
+		{ pTypeTEMP_RAIN, "Temp + Rain", "Temp + Rain" },
+		{ pTypeChime, "Chime", "doorbell" },
+		{ pTypeFan, "Fan", "fan" },
 		{ pTypeBBQ, "BBQ Meter", "bbq" },
-		{ pTypePOWER, "Power" , "current" },
-		{ pTypeRFY, "RFY" , "blinds" },
-		{ pTypeEvohome, "Heating" , "evohome" },
-		{ pTypeEvohomeZone, "Heating" , "evohome" },
-		{ pTypeEvohomeWater, "Heating" , "evohome" },
-		{ pTypeEvohomeRelay, "Heating" , "evohome" },
+		{ pTypePOWER, "Power", "current" },
+		{ pTypeRFY, "RFY", "blinds" },
+		{ pTypeEvohome, "Heating", "evohome" },
+		{ pTypeEvohomeZone, "Heating", "evohome" },
+		{ pTypeEvohomeWater, "Heating", "evohome" },
+		{ pTypeEvohomeRelay, "Heating", "evohome" },
 		{ pTypeGeneralSwitch, "Light/Switch", "lightbulb" },
-		{ 0, NULL, NULL }
+		{ pTypeWEATHER, "Weather", "weather" },
+		{ pTypeSOLAR, "Solar", "solar" },
+		{ pTypeHunter, "Hunter", "Hunter" },
+		{ 0, nullptr, nullptr },
 	};
-	if (snum==1)
-		return findTableIDSingle1 (Table, i);
+	if (snum == 1)
+		return findTableIDSingle1(Table, i);
 
-	return findTableIDSingle2 (Table, i);
+	return findTableIDSingle2(Table, i);
 }
 
-const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char sType)
+const char* RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char sType)
 {
-	static const STR_TABLE_ID1_ID2	Table[] =
-	{
+	static const STR_TABLE_ID1_ID2 Table[] = {
 		{ pTypeTEMP, sTypeTEMP1, "THR128/138, THC138" },
 		{ pTypeTEMP, sTypeTEMP2, "THC238/268, THN132, THWR288, THRN122, THN122, AW129/131" },
 		{ pTypeTEMP, sTypeTEMP3, "THWR800" },
@@ -521,7 +568,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeHUM, sTypeHUM1, "LaCrosse TX3" },
 		{ pTypeHUM, sTypeHUM2, "LaCrosse WS2300" },
 
-		{ pTypeTEMP_HUM, sTypeTH1, "THGN122/123, THGN132, THGR122/228/238/268" },
+		{ pTypeTEMP_HUM, sTypeTH1, "THGN122/123/132, THGR122/228/238/268" },
 		{ pTypeTEMP_HUM, sTypeTH2, "THGR810, THGN800" },
 		{ pTypeTEMP_HUM, sTypeTH3, "RTGR328" },
 		{ pTypeTEMP_HUM, sTypeTH4, "THGR328" },
@@ -537,7 +584,6 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeTEMP_HUM, sTypeTH14, "Alecto" },
 		{ pTypeTEMP_HUM, sTypeTH_LC_TC, "LaCrosse TX3" },
 
-
 		{ pTypeTEMP_HUM_BARO, sTypeTHB1, "THB1 - BTHR918, BTHGN129" },
 		{ pTypeTEMP_HUM_BARO, sTypeTHB2, "THB2 - BTHR918N, BTHR968" },
 		{ pTypeTEMP_HUM_BARO, sTypeTHBFloat, "Weather Station" },
@@ -548,7 +594,11 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeRAIN, sTypeRAIN4, "UPM RG700" },
 		{ pTypeRAIN, sTypeRAIN5, "LaCrosse WS2300" },
 		{ pTypeRAIN, sTypeRAIN6, "LaCrosse TX5" },
+		{ pTypeRAIN, sTypeRAIN7, "Alecto" },
+		{ pTypeRAIN, sTypeRAIN8, "Davis" },
+		{ pTypeRAIN, sTypeRAIN9, "TFA 30.3233.01" },
 		{ pTypeRAIN, sTypeRAINWU, "WWW" },
+		{ pTypeRAIN, sTypeRAINByRate, "RainByRate" },
 
 		{ pTypeWIND, sTypeWIND1, "WTGR800" },
 		{ pTypeWIND, sTypeWIND2, "WGR800" },
@@ -558,10 +608,18 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeWIND, sTypeWIND6, "LaCrosse WS2300" },
 		{ pTypeWIND, sTypeWIND7, "Alecto WS4500" },
 		{ pTypeWIND, sTypeWINDNoTemp, "Weather Station" },
+		{ pTypeWIND, sTypeWINDNoTempNoChill, "Wind" },
 
 		{ pTypeUV, sTypeUV1, "UVN128,UV138" },
 		{ pTypeUV, sTypeUV2, "UVN800" },
 		{ pTypeUV, sTypeUV3, "TFA" },
+
+		{ pTypeWEATHER, sTypeWEATHER1, "Alecto ACH2010" },
+		{ pTypeWEATHER, sTypeWEATHER2, "Alecto WS5500" },
+
+		{ pTypeSOLAR, sTypeSOLAR1, "Davis" },
+
+		{ pTypeHunter, sTypeHunterfan, "Hunter Fan" },
 
 		{ pTypeLighting1, sTypeX10, "X10" },
 		{ pTypeLighting1, sTypeARC, "ARC" },
@@ -575,6 +633,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeLighting1, sTypeEnergenie5, "Energenie 5-gang" },
 		{ pTypeLighting1, sTypeGDR2, "COCO GDR2" },
 		{ pTypeLighting1, sTypeHQ, "HQ COCO-20" },
+		{ pTypeLighting1, sTypeOase, "Oase Inscenio" },
 
 		{ pTypeLighting2, sTypeAC, "AC" },
 		{ pTypeLighting2, sTypeHEU, "HomeEasy EU" },
@@ -594,7 +653,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeLighting5, sTypeTRC02_2, "TRC02_2 (RGB)" },
 		{ pTypeLighting5, sTypeAoke, "Aoke" },
 		{ pTypeLighting5, sTypeEurodomest, "Eurodomest" },
-		{ pTypeLighting5, sTypeLivoloAppliance, "Livolo Appliance" },
+		{ pTypeLighting5, sTypeLivolo1to10, "Livolo 1 to 10" },
 		{ pTypeLighting5, sTypeRGB432W, "RGB432W" },
 		{ pTypeLighting5, sTypeMDREMOTE107, "MDRemote 107" },
 		{ pTypeLighting5, sTypeLegrandCAD, "Legrand CAD" },
@@ -605,11 +664,11 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 
 		{ pTypeLighting6, sTypeBlyss, "Blyss" },
 
-		{ pTypeHomeConfort, sTypeHomeConfortTEL010 , "TEL-010" },
+		{ pTypeHomeConfort, sTypeHomeConfortTEL010, "TEL-010" },
 
 		{ pTypeCurtain, sTypeHarrison, "Harrison" },
 
-		{ pTypeBlinds, sTypeBlindsT0, "RollerTrol, Hasta new" },
+		{ pTypeBlinds, sTypeBlindsT0, "RollerTrol/Hasta" },
 		{ pTypeBlinds, sTypeBlindsT1, "Hasta old" },
 		{ pTypeBlinds, sTypeBlindsT2, "A-OK RF01" },
 		{ pTypeBlinds, sTypeBlindsT3, "A-OK AC114" },
@@ -617,23 +676,29 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeBlinds, sTypeBlindsT5, "Media Mount" },
 		{ pTypeBlinds, sTypeBlindsT6, "DC106" },
 		{ pTypeBlinds, sTypeBlindsT7, "Forest" },
-		{ pTypeBlinds, sTypeBlindsT8, "Chamberlain CS4330CN" },
+		{ pTypeBlinds, sTypeBlindsT8, "Chamberlain" },
 		{ pTypeBlinds, sTypeBlindsT9, "Sunpery" },
 		{ pTypeBlinds, sTypeBlindsT10, "Dolat DLM-1" },
 		{ pTypeBlinds, sTypeBlindsT11, "ASP" },
 		{ pTypeBlinds, sTypeBlindsT12, "Confexx" },
 		{ pTypeBlinds, sTypeBlindsT13, "Screenline" },
+		{ pTypeBlinds, sTypeBlindsT14, "Hualite" },
+		{ pTypeBlinds, sTypeBlindsT15, "RFU" },
+		{ pTypeBlinds, sTypeBlindsT16, "Zemismart" },
+		{ pTypeBlinds, sTypeBlindsT17, "Gaposa" },
+		{ pTypeBlinds, sTypeBlindsT18, "Cherubini" },
 
 		{ pTypeSecurity1, sTypeSecX10, "X10 security" },
 		{ pTypeSecurity1, sTypeSecX10M, "X10 security motion" },
 		{ pTypeSecurity1, sTypeSecX10R, "X10 security remote" },
 		{ pTypeSecurity1, sTypeKD101, "KD101 smoke detector" },
-		{ pTypeSecurity1, sTypePowercodeSensor, "Visonic PowerCode sensor - primary contact" },
-		{ pTypeSecurity1, sTypePowercodeMotion, "Visonic PowerCode motion" },
+		{ pTypeSecurity1, sTypePowercodeSensor, "Visonic sensor - primary contact" },
+		{ pTypeSecurity1, sTypePowercodeMotion, "Visonic motion" },
 		{ pTypeSecurity1, sTypeCodesecure, "Visonic CodeSecure" },
-		{ pTypeSecurity1, sTypePowercodeAux, "Visonic PowerCode sensor - auxiliary contact" },
+		{ pTypeSecurity1, sTypePowercodeAux, "Visonic sensor - auxiliary contact" },
 		{ pTypeSecurity1, sTypeMeiantech, "Meiantech/Atlantic/Aidebao" },
 		{ pTypeSecurity1, sTypeSA30, "Alecto SA30 smoke detector" },
+		{ pTypeSecurity1, sTypeRM174RF, "Smartwares RM174RF smoke detector" },
 		{ pTypeSecurity1, sTypeDomoticzSecurity, "Security Panel" },
 
 		{ pTypeSecurity2, sTypeSec2Classic, "KeeLoq" },
@@ -647,7 +712,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeRemote, sTypeATIrw2, "ATI Remote Wonder II" },
 
 		{ pTypeThermostat1, sTypeDigimax, "Digimax" },
-		{ pTypeThermostat1, sTypeDigimaxShort, "Digimax with short format" },
+		{ pTypeThermostat1, sTypeDigimaxShort, "Digimax short" },
 
 		{ pTypeThermostat2, sTypeHE105, "HE105" },
 		{ pTypeThermostat2, sTypeRTS10, "RTS10" },
@@ -716,6 +781,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeGeneral, sTypeTextStatus, "Text" },
 		{ pTypeGeneral, sTypeZWaveThermostatMode, "Thermostat Mode" },
 		{ pTypeGeneral, sTypeZWaveThermostatFanMode, "Thermostat Fan Mode" },
+		{ pTypeGeneral, sTypeZWaveThermostatOperatingState, "Thermostat Operating State" },
 		{ pTypeGeneral, sTypeAlert, "Alert" },
 		{ pTypeGeneral, sTypeSoundLevel, "Sound Level" },
 		{ pTypeGeneral, sTypeUV, "UV" },
@@ -725,19 +791,30 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeGeneral, sTypeWaterflow, "Waterflow" },
 		{ pTypeGeneral, sTypeCustom, "Custom Sensor" },
 		{ pTypeGeneral, sTypeZWaveAlarm, "Alarm" },
+		{ pTypeGeneral, sTypeManagedCounter, "Managed Counter" },
 
 		{ pTypeThermostat, sTypeThermSetpoint, "SetPoint" },
 		{ pTypeThermostat, sTypeThermTemperature, "Temperature" },
 
-		{ pTypeChime, sTypeByronSX, "ByronSX" },
+		{ pTypeChime, sTypeByronSX, "Byron SX" },
 		{ pTypeChime, sTypeByronMP001, "Byron MP001" },
 		{ pTypeChime, sTypeSelectPlus, "SelectPlus" },
-		{ pTypeChime, sTypeSelectPlus3, "SelectPlus3" },
+		{ pTypeChime, sTypeByronBY, "Byron BY" },
 		{ pTypeChime, sTypeEnvivo, "Envivo" },
+		{ pTypeChime, sTypeAlfawise, "Alfawise" },
 
-		{ pTypeFan, sTypeSiemensSF01 , "Siemens SF01" },
-		{ pTypeFan, sTypeItho , "Itho CVE RFT" },
+		{ pTypeFan, sTypeSiemensSF01, "Siemens SF01" },
+		{ pTypeFan, sTypeItho, "Itho CVE RFT" },
 		{ pTypeFan, sTypeLucciAir, "Lucci Air" },
+		{ pTypeFan, sTypeSeavTXS4, "SEAV TXS4" },
+		{ pTypeFan, sTypeWestinghouse, "Westinghouse" },
+		{ pTypeFan, sTypeLucciAirDC, "Lucci Air DC" },
+		{ pTypeFan, sTypeCasafan, "Casafan" },
+		{ pTypeFan, sTypeFT1211R, "FT1211R" },
+		{ pTypeFan, sTypeFalmec, "Falmec" },
+		{ pTypeFan, sTypeLucciAirDCII, "Lucci Air DC II" },
+		{ pTypeFan, sTypeIthoECO, "Itho ECO" },
+		{ pTypeFan, sTypeNovy, "Novy" },
 
 		{ pTypeTEMP_RAIN, sTypeTR1, "Alecto WS1200" },
 
@@ -745,10 +822,14 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 
 		{ pTypePOWER, sTypeELEC5, "Revolt" },
 
-		{ pTypeLimitlessLights, sTypeLimitlessRGBW, "RGBW" },
-		{ pTypeLimitlessLights, sTypeLimitlessRGB, "RGB" },
-		{ pTypeLimitlessLights, sTypeLimitlessWhite, "White" },
-		{ pTypeLimitlessLights, sTypeLimitlessRGBWW, "RGBWW" },
+		{ pTypeColorSwitch, sTypeColor_RGB_W, "RGBW" },
+		{ pTypeColorSwitch, sTypeColor_RGB, "RGB" },
+		{ pTypeColorSwitch, sTypeColor_White, "White" },
+		{ pTypeColorSwitch, sTypeColor_RGB_CW_WW, "RGBWW" },
+		{ pTypeColorSwitch, sTypeColor_LivCol, "RGB" },
+		{ pTypeColorSwitch, sTypeColor_RGB_W_Z, "RGBWZ" },
+		{ pTypeColorSwitch, sTypeColor_RGB_CW_WW_Z, "RGBWWZ" },
+		{ pTypeColorSwitch, sTypeColor_CW_WW, "WW" },
 
 		{ pTypeRFY, sTypeRFY, "RFY" },
 		{ pTypeRFY, sTypeRFY2, "RFY2" },
@@ -759,6 +840,15 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeEvohomeZone, sTypeEvohomeZone, "Zone" },
 		{ pTypeEvohomeWater, sTypeEvohomeWater, "Hot Water" },
 		{ pTypeEvohomeRelay, sTypeEvohomeRelay, "Relay" },
+
+		{ pTypeFS20, sTypeFS20, "FS20" },
+		{ pTypeFS20, sTypeFHT8V, "FHT 8V valve" },
+		{ pTypeFS20, sTypeFHT80, "FHT80 door/window sensor" },
+
+		{ pTypeWEATHER, sTypeWEATHER1, "Alecto ACH2010" },
+		{ pTypeWEATHER, sTypeWEATHER2, "Alecto WS5500" },
+
+		{ pTypeSOLAR, sTypeSOLAR1, "Davis" },
 
 		{ pTypeGeneralSwitch, sSwitchTypeX10, "X10" },
 		{ pTypeGeneralSwitch, sSwitchTypeARC, "ARC" },
@@ -835,7 +925,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeGeneralSwitch, sSwitchBlindsT1, "Legrand MyHome Blind Bus" },
 		{ pTypeGeneralSwitch, sSwitchLightT1, "Legrand MyHome Light Bus" },
 		{ pTypeGeneralSwitch, sSwitchAuxiliaryT1, "Legrand MyHome Auxiliary Bus" },
-		{ pTypeGeneralSwitch, sSwitchContactT1, "Legrand MyHome DryContact/IRdetec" },
+		{ pTypeGeneralSwitch, sSwitchContactT1, "Legrand MyHome Contact" },
 		{ pTypeGeneralSwitch, sSwitchMC145026, "MC145026" },
 		{ pTypeGeneralSwitch, sSwitchLobeco, "Lobeco" },
 		{ pTypeGeneralSwitch, sSwitchFriedland, "Friedland" },
@@ -863,7 +953,7 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeGeneralSwitch, sSwitchLightT2, "Legrand MyHome Light Zigbee" },
 		{ pTypeGeneralSwitch, sSwitchTypeYW_Secu, "YW_Secu" },
 		{ pTypeGeneralSwitch, sSwitchTypeMertik_GV60, "Mertik_GV60" },
-		{ pTypeGeneralSwitch, sSwitchTypeNingbo64, "Ningbo64"},
+		{ pTypeGeneralSwitch, sSwitchTypeNingbo64, "Ningbo64" },
 		{ pTypeGeneralSwitch, sSwitchTypeX2D, "X2D" },
 		{ pTypeGeneralSwitch, sSwitchTypeHRCMotor, "HRCMotor" },
 		{ pTypeGeneralSwitch, sSwitchTypeVelleman, "Velleman" },
@@ -871,96 +961,74 @@ const char *RFX_Type_SubType_Desc(const unsigned char dType, const unsigned char
 		{ pTypeGeneralSwitch, sSwitchTypeYW_Sensor, "YW_Sensor" },
 		{ pTypeGeneralSwitch, sSwitchTypeLegrandcad, "LEGRANDCAD" },
 		{ pTypeGeneralSwitch, sSwitchTypeSysfsGpio, "SysfsGpio" },
-		{  0,0,NULL }
+		{ pTypeGeneralSwitch, sSwitchTypeHager, "Hager" },
+		{ pTypeGeneralSwitch, sSwitchTypeFaber, "Faber" },
+		{ pTypeGeneralSwitch, sSwitchTypeDrayton, "Drayton" },
+		{ pTypeGeneralSwitch, sSwitchTypeV2Phoenix, "V2Phoenix" },
+		{ 0, 0, nullptr },
 	};
 	return findTableID1ID2(Table, dType, sType);
 }
 
-const char *Media_Player_States(const _eMediaStatus Status)
+const char* Media_Player_States(const _eMediaStatus Status)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ MSTAT_OFF, "Off" },
-		{ MSTAT_ON, "On" },
-		{ MSTAT_PAUSED, "Paused" },
-		{ MSTAT_STOPPED, "Stopped" },
-		{ MSTAT_VIDEO, "Video" },
-		{ MSTAT_AUDIO, "Audio" },
-		{ MSTAT_PHOTO, "Photo" },
-		{ MSTAT_PLAYING, "Playing" },
-		{ MSTAT_DISCONNECTED, "Disconnected" },
-		{ MSTAT_UNKNOWN, "Unknown" },
-		{ 0, NULL, NULL }
+	static const STR_TABLE_SINGLE Table[] = {
+		{ MSTAT_OFF, "Off" },		{ MSTAT_ON, "On" },	      { MSTAT_PAUSED, "Paused" },
+		{ MSTAT_STOPPED, "Stopped" },	{ MSTAT_VIDEO, "Video" },     { MSTAT_AUDIO, "Audio" },
+		{ MSTAT_PHOTO, "Photo" },	{ MSTAT_PLAYING, "Playing" }, { MSTAT_DISCONNECTED, "Disconnected" },
+		{ MSTAT_SLEEPING, "Sleeping" }, { MSTAT_UNKNOWN, "Unknown" }, { 0, nullptr, nullptr },
 	};
 	return findTableIDSingle1(Table, Status);
 }
 
-const char *ZWave_Clock_Days(const unsigned char Day)
+const char* ZWave_Clock_Days(const unsigned char Day)
 {
-	static const STR_TABLE_SINGLE	Table[] =
-	{
-		{ 0, "Monday" },
-		{ 1, "Tuesday" },
-		{ 2, "Wednesday" },
-		{ 3, "Thursday" },
-		{ 4, "Friday" },
-		{ 5, "Saturday" },
-		{ 6, "Sunday" },
-		{ 0, NULL, NULL }
+	static const STR_TABLE_SINGLE Table[] = {
+		{ 0, "Monday" }, { 1, "Tuesday" },  { 2, "Wednesday" }, { 3, "Thursday" },
+		{ 4, "Friday" }, { 5, "Saturday" }, { 6, "Sunday" },	{ 0, nullptr, nullptr },
 	};
 	return findTableIDSingle1(Table, Day);
 }
 /*
 const char *ZWave_Thermostat_Modes[] =
 {
-	"Off",
-	"Heat",
-	"Cool",
-	"Auto",
-	"Aux Heat",
-	"Resume",
-	"Fan Only",
-	"Furnace",
-	"Dry Air",
-	"Moist Air",
-	"Auto Changeover",
-	"Heat Econ",
-	"Cool Econ",
-	"Away",
-	"Unknown",
-	NULL
+"Off",
+"Heat",
+"Cool",
+"Auto",
+"Aux Heat",
+"Resume",
+"Fan Only",
+"Furnace",
+"Dry Air",
+"Moist Air",
+"Auto Changeover",
+"Heat Econ",
+"Cool Econ",
+"Away",
+"Unknown",
+NULL
 };
 */
-const char *ZWave_Thermostat_Fan_Modes[] =
-{
-	"Auto Low",
-	"On Low",
-	"Auto High",
-	"On High",
-	"Unknown 4",
-	"Unknown 5",
-	"Circulate",
-	"Unknown",
-	NULL
-};
+const char *ZWave_Thermostat_Fan_Modes[]
+	= { "Auto Low", "On Low", "Auto High", "On High", "Unknown 4", "Unknown 5", "Circulate", "Unknown", nullptr };
 
-int Lookup_ZWave_Thermostat_Modes(const std::vector<std::string> &Modes, const std::string &sMode)
+int Lookup_ZWave_Thermostat_Modes(const std::vector<std::string>& Modes, const std::string& sMode)
 {
 	int ii = 0;
-	std::vector<std::string>::const_iterator itt;
-	for (itt = Modes.begin(); itt != Modes.end(); ++itt)
+	for (const auto &mode : Modes)
 	{
-		if (*itt == sMode)
+		if (mode == sMode)
 			return ii;
 		ii++;
 	}
 	return -1;
 }
 
-int Lookup_ZWave_Thermostat_Fan_Modes(const std::string &sMode)
+int Lookup_ZWave_Thermostat_Fan_Modes(const std::string& sMode)
 {
 	int ii = 0;
-	while (ZWave_Thermostat_Fan_Modes[ii]!=NULL)
+	while (ZWave_Thermostat_Fan_Modes[ii] != nullptr)
 	{
 		if (ZWave_Thermostat_Fan_Modes[ii] == sMode)
 		{
@@ -973,21 +1041,21 @@ int Lookup_ZWave_Thermostat_Fan_Modes(const std::string &sMode)
 
 
 void GetLightStatus(
-		const unsigned char dType,
-		const unsigned char dSubType,
-		const _eSwitchType switchtype,
-		const unsigned char nValue,
-		const std::string &sValue,
-		std::string &lstatus,
-		int &llevel,
-		bool &bHaveDimmer,
-		int &maxDimLevel,
-		bool &bHaveGroupCmd)
+	const unsigned char dType,
+	const unsigned char dSubType,
+	const _eSwitchType switchtype,
+	const unsigned char nValue,
+	const std::string& sValue,
+	std::string& lstatus,
+	int& llevel,
+	bool& bHaveDimmer,
+	int& maxDimLevel,
+	bool& bHaveGroupCmd)
 {
-	bHaveDimmer=false;
-	maxDimLevel=0;
-	bHaveGroupCmd=false;
-	lstatus="";
+	bHaveDimmer = false;
+	maxDimLevel = 0;
+	bHaveGroupCmd = false;
+	lstatus = "";
 
 	char szTmp[80];
 	switch (dType)
@@ -996,26 +1064,26 @@ void GetLightStatus(
 		switch (dSubType)
 		{
 		case sTypeX10:
-			bHaveGroupCmd=true;
+			bHaveGroupCmd = true;
 			switch (nValue)
 			{
 			case light1_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light1_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light1_sDim:
-				lstatus="Dim";
+				lstatus = "Dim";
 				break;
 			case light1_sBright:
-				lstatus="Bright";
+				lstatus = "Bright";
 				break;
 			case light1_sAllOn:
-				lstatus="All On";
+				lstatus = "All On";
 				break;
 			case light1_sAllOff:
-				lstatus="All Off";
+				lstatus = "All Off";
 				break;
 			}
 			break;
@@ -1025,23 +1093,24 @@ void GetLightStatus(
 		case sTypeEnergenie5:
 		case sTypeGDR2:
 		case sTypeHQ:
-			bHaveGroupCmd=true;
+		case sTypeOase:
+			bHaveGroupCmd = true;
 			switch (nValue)
 			{
 			case light1_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light1_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light1_sAllOn:
-				lstatus="All On";
+				lstatus = "All On";
 				break;
 			case light1_sAllOff:
-				lstatus="All Off";
+				lstatus = "All Off";
 				break;
 			case light1_sChime:
-				lstatus="Chime";
+				lstatus = "Chime";
 				break;
 			}
 			break;
@@ -1053,10 +1122,10 @@ void GetLightStatus(
 			switch (nValue)
 			{
 			case light1_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light1_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			}
 			break;
@@ -1068,7 +1137,7 @@ void GetLightStatus(
 
 		if (switchtype != STYPE_Media) {
 			// Calculate % that the light is currently on, taking the maxdimlevel into account.
-			llevel=(int)float((100.0f/float(maxDimLevel))*atof(sValue.c_str()));
+			llevel = (int)float((100.0F / float(maxDimLevel)) * atof(sValue.c_str()));
 		}
 
 		// Fill in other parameters
@@ -1078,35 +1147,38 @@ void GetLightStatus(
 		case sTypeHEU:
 		case sTypeANSLUT:
 		case sTypeKambrook:
-			bHaveDimmer=true;
-			bHaveGroupCmd=true;
+			bHaveDimmer = true;
+			bHaveGroupCmd = true;
 			switch (nValue)
 			{
 			case light2_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light2_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light2_sSetLevel:
-				sprintf(szTmp,"Set Level: %d %%", llevel);
-				if (sValue!="0")
-					lstatus=szTmp;
+				sprintf(szTmp, "Set Level: %d %%", llevel);
+				if (sValue != "0")
+					lstatus = szTmp;
 				else
-					lstatus="Off";
+					lstatus = "Off";
 				break;
 			case light2_sGroupOff:
-				lstatus="Group Off";
+				lstatus = "Group Off";
 				break;
 			case light2_sGroupOn:
-				lstatus="Group On";
+				lstatus = "Group On";
 				break;
 			case light2_sSetGroupLevel:
-				sprintf(szTmp,"Set Group Level: %d %%", atoi(sValue.c_str()));
-				if (sValue!="0")
-					lstatus=szTmp;
+				sprintf(szTmp, "Set Group Level: %d %%", atoi(sValue.c_str()));
+				if (sValue != "0")
+					lstatus = szTmp;
 				else
-					lstatus="Off";
+					lstatus = "Off";
+				break;
+			case gswitch_sStop:
+				lstatus = "Stop";
 				break;
 			}
 			break;
@@ -1116,75 +1188,75 @@ void GetLightStatus(
 		switch (nValue)
 		{
 		case light2_sOff:
-			lstatus="Off";
+			lstatus = "Off";
 			break;
 		case light2_sOn:
-			lstatus="On";
+			lstatus = "On";
 			break;
 		}
 		break;
 	case pTypeLighting5:
-		if (dSubType==sTypeLivolo)
-			llevel=int((100.0f/7.0f)*atof(sValue.c_str()));
+		if (dSubType == sTypeLivolo)
+			llevel = int((100.0F / 7.0F) * atof(sValue.c_str()));
 		else
-			llevel=int((100.0f/31.0f)*atof(sValue.c_str()));
+			llevel = int((100.0F / 31.0F) * atof(sValue.c_str()));
 		switch (dSubType)
 		{
 		case sTypeLightwaveRF:
-			bHaveGroupCmd=true;
-			bHaveDimmer=true;
+			bHaveGroupCmd = true;
+			bHaveDimmer = true;
 			maxDimLevel = 32;
-			llevel = (int)float((100.0f / float(maxDimLevel))*atof(sValue.c_str()));
+			llevel = (int)float((100.0F / float(maxDimLevel)) * atof(sValue.c_str()));
 			switch (nValue)
 			{
 			case light5_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light5_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light5_sGroupOff:
-				lstatus="Group Off";
+				lstatus = "Group Off";
 				break;
 			case light5_sMood1:
-				lstatus="Group Mood 1";
+				lstatus = "Group Mood 1";
 				break;
 			case light5_sMood2:
-				lstatus="Group Mood 2";
+				lstatus = "Group Mood 2";
 				break;
 			case light5_sMood3:
-				lstatus="Group Mood 3";
+				lstatus = "Group Mood 3";
 				break;
 			case light5_sMood4:
-				lstatus="Group Mood 4";
+				lstatus = "Group Mood 4";
 				break;
 			case light5_sMood5:
-				lstatus="Group Mood 5";
+				lstatus = "Group Mood 5";
 				break;
 			case light5_sUnlock:
-				lstatus="Unlock";
+				lstatus = "Unlock";
 				break;
 			case light5_sLock:
-				lstatus="Lock";
+				lstatus = "Lock";
 				break;
 			case light5_sAllLock:
-				lstatus="All lock";
+				lstatus = "All lock";
 				break;
 			case light5_sClose:
-				lstatus="Close inline relay";
+				lstatus = "Close inline relay";
 				break;
 			case light5_sStop:
-				lstatus="Stop inline relay";
+				lstatus = "Stop inline relay";
 				break;
 			case light5_sOpen:
-				lstatus="Open inline relay";
+				lstatus = "Open inline relay";
 				break;
 			case light5_sSetLevel:
-				sprintf(szTmp,"Set Level: %d %%" ,llevel);
-				if (sValue!="0")
-					lstatus=szTmp;
+				sprintf(szTmp, "Set Level: %d %%", llevel);
+				if (sValue != "0")
+					lstatus = szTmp;
 				else
-					lstatus="Off";
+					lstatus = "Off";
 				break;
 			}
 			break;
@@ -1192,57 +1264,57 @@ void GetLightStatus(
 			switch (nValue)
 			{
 			case light5_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light5_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light5_sLearn:
-				lstatus="Learn";
+				lstatus = "Learn";
 				break;
 			}
 			break;
 		case sTypeBBSB:
 		case sTypeRSL:
 		case sTypeKangtai:
-			bHaveGroupCmd=true;
+			bHaveGroupCmd = true;
 			switch (nValue)
 			{
 			case light5_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light5_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light5_sGroupOff:
-				lstatus="Group Off";
+				lstatus = "Group Off";
 				break;
 			case light5_sGroupOn:
-				lstatus="Group On";
+				lstatus = "Group On";
 				break;
 			}
 			break;
 		case sTypeLivolo:
-			bHaveGroupCmd=true;
-			bHaveDimmer=true;
-			maxDimLevel=7;
+			bHaveGroupCmd = true;
+			bHaveDimmer = true;
+			maxDimLevel = 7;
 			switch (nValue)
 			{
 			case light5_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light5_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light5_sLivoloGang2Toggle:
-				lstatus="Set Level";
+				lstatus = "Set Level";
 				break;
 			case light5_sLivoloGang3Toggle:
-				lstatus="Set Level";
+				lstatus = "Set Level";
 				break;
 			}
 			break;
-		case sTypeLivoloAppliance:
+		case sTypeLivolo1to10:
 			bHaveGroupCmd = true;
 			switch (nValue)
 			{
@@ -1280,15 +1352,15 @@ void GetLightStatus(
 		case sTypeTRC02:
 		case sTypeTRC02_2:
 			bHaveGroupCmd = true;
-			bHaveDimmer=true;
-			maxDimLevel=7;
+			bHaveDimmer = true;
+			maxDimLevel = 7;
 			switch (nValue)
 			{
 			case light5_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light5_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			}
 			break;
@@ -1322,7 +1394,7 @@ void GetLightStatus(
 			break;
 		case sTypeIT:
 			maxDimLevel = 9;
-			llevel = (int)float((100.0f / float(maxDimLevel))*atof(sValue.c_str()));
+			llevel = (int)float((100.0F / float(maxDimLevel)) * atof(sValue.c_str()));
 			switch (nValue)
 			{
 			case light5_sOff:
@@ -1349,23 +1421,23 @@ void GetLightStatus(
 		}
 		break;
 	case pTypeLighting6:
-		bHaveGroupCmd=true;
+		bHaveGroupCmd = true;
 		switch (dSubType)
 		{
 		case sTypeBlyss:
 			switch (nValue)
 			{
 			case light6_sOff:
-				lstatus="Off";
+				lstatus = "Off";
 				break;
 			case light6_sOn:
-				lstatus="On";
+				lstatus = "On";
 				break;
 			case light6_sGroupOff:
-				lstatus="Group Off";
+				lstatus = "Group Off";
 				break;
 			case light6_sGroupOn:
-				lstatus="Group On";
+				lstatus = "Group On";
 				break;
 			}
 		}
@@ -1397,14 +1469,14 @@ void GetLightStatus(
 		maxDimLevel = 100;
 
 		// Calculate % that the light is currently on, taking the maxdimlevel into account.
-		llevel = (int)float((100.0f / float(maxDimLevel))*atof(sValue.c_str()));
+		llevel = (int)float((100.0F / float(maxDimLevel)) * atof(sValue.c_str()));
 
 		// Fill in other parameters
 		switch (dSubType)
 		{
-		case sTypeAC:
-		case sTypeHEU:
-		case sTypeANSLUT:
+		case sSwitchTypeAC:
+		case sSwitchTypeHEU:
+		case sSwitchTypeANSLUT:
 		case sSwitchTypeSelector:
 		case sSwitchGeneralSwitch:
 			bHaveDimmer = true;
@@ -1480,142 +1552,216 @@ void GetLightStatus(
 			break;
 		}
 		break;
-	case pTypeLimitlessLights:
-		bHaveDimmer=true;
-		maxDimLevel=100;
+	case pTypeFS20:
+		bHaveGroupCmd = false;
+		maxDimLevel = 15;
 		switch (nValue)
 		{
-		case Limitless_LedOff:
-			lstatus="Off";
+		case fs20_sOff:
+			lstatus = "Off";
 			break;
-		case Limitless_LedOn:
-			lstatus="On";
+		case fs20_sDimlevel_1:
+		case fs20_sDimlevel_2:
+		case fs20_sDimlevel_3:
+		case fs20_sDimlevel_4:
+		case fs20_sDimlevel_5:
+		case fs20_sDimlevel_6:
+		case fs20_sDimlevel_7:
+		case fs20_sDimlevel_8:
+		case fs20_sDimlevel_9:
+		case fs20_sDimlevel_10:
+		case fs20_sDimlevel_11:
+		case fs20_sDimlevel_12:
+		case fs20_sDimlevel_13:
+		case fs20_sDimlevel_14:
+		case fs20_sDimlevel_15:
+			lstatus = "Set Level";
+			bHaveDimmer = true;
+			llevel = nValue - fs20_sDimlevel_1 + 1;
+			llevel = (int)float((100.0F / float(maxDimLevel)) * llevel);
 			break;
-		case Limitless_SetBrightnessLevel:
-			lstatus="Set Level";
+		case fs20_sOn_100:
+			lstatus = "On";
 			break;
-		case Limitless_SetKelvinLevel:
-			lstatus="Set Kelvin Level";
+		case fs20_sOn_last_dim:
+			lstatus = "OnDim";
 			break;
-		case Limitless_SetColorToWhite:
-			lstatus="Set to White";
+		case fs20_sToggle_On_Off:
+			lstatus = "Toggle";
 			break;
-		case Limitless_NightMode:
-			lstatus="NightMode";
+		case fs20_sBright:
+			lstatus = "Bright";
 			break;
-		case Limitless_DiscoMode_1:
-			lstatus="Disco Mode 1";
+		case fs20_sDim:
+			lstatus = "Dim";
 			break;
-		case Limitless_DiscoMode_2:
-			lstatus="Disco Mode 2";
+		case fs20_sStart_dim_cycle:
+			lstatus = "StartDim";
 			break;
-		case Limitless_DiscoMode_3:
-			lstatus="Disco Mode 3";
+		case fs20_sProgram_timer:
+			lstatus = "Program";
 			break;
-		case Limitless_DiscoMode_4:
-			lstatus="Disco Mode 4";
+		case fs20_sRequest_status:
+			lstatus = "Request";
 			break;
-		case Limitless_DiscoMode_5:
-			lstatus="Disco Mode 5";
+		case fs20_sOff_for_time_period:
+			lstatus = "OffTime";
 			break;
-		case Limitless_DiscoMode_6:
-			lstatus="Disco Mode 6";
+		case fs20_sOn_100_for_time_period:
+			lstatus = "OnTime";
 			break;
-		case Limitless_DiscoMode_7:
-			lstatus="Disco Mode 7";
+		case fs20_sOn_last_dim_level_period:
+			lstatus = "OnDimTime";
 			break;
-		case Limitless_DiscoMode_8:
-			lstatus="Disco Mode 8";
+		case fs20_sReset:
+			lstatus = "Reset";
 			break;
-		case Limitless_DiscoMode_9:
-			lstatus="Disco Mode 9";
+		}
+		break;
+	case pTypeColorSwitch:
+		bHaveDimmer = true;
+		maxDimLevel = 100;
+
+		// Calculate % that the light is currently on, taking the maxdimlevel into account.
+		llevel = (int)float((100.0F / float(maxDimLevel)) * atof(sValue.c_str()));
+
+		switch (nValue)
+		{
+		case Color_LedOff:
+			lstatus = "Off";
+			break;
+		case Color_LedOn:
+			lstatus = "On";
+			break;
+		case Color_SetBrightnessLevel:
+			sprintf(szTmp, "Set Level: %d %%", llevel);
+			if (sValue != "0")
+				lstatus = szTmp;
+			else
+				lstatus = "Off";
+			break;
+		case Color_SetColorToWhite:
+			lstatus = "Set to White";
+			break;
+		case Color_SetColor:
+			lstatus = "Set Color";
+			break;
+		case Color_NightMode:
+			lstatus = "NightMode";
+			break;
+		case Color_DiscoMode_1:
+			lstatus = "Disco Mode 1";
+			break;
+		case Color_DiscoMode_2:
+			lstatus = "Disco Mode 2";
+			break;
+		case Color_DiscoMode_3:
+			lstatus = "Disco Mode 3";
+			break;
+		case Color_DiscoMode_4:
+			lstatus = "Disco Mode 4";
+			break;
+		case Color_DiscoMode_5:
+			lstatus = "Disco Mode 5";
+			break;
+		case Color_DiscoMode_6:
+			lstatus = "Disco Mode 6";
+			break;
+		case Color_DiscoMode_7:
+			lstatus = "Disco Mode 7";
+			break;
+		case Color_DiscoMode_8:
+			lstatus = "Disco Mode 8";
+			break;
+		case Color_DiscoMode_9:
+			lstatus = "Disco Mode 9";
 			break;
 		}
 		break;
 	case pTypeSecurity1:
-		llevel=0;
+		llevel = 0;
 		switch (nValue)
 		{
 		case sStatusNormal:
-			lstatus="Normal";
+			lstatus = "Normal";
 			break;
 		case sStatusNormalDelayed:
-			lstatus="Normal Delayed";
+			lstatus = "Normal Delayed";
 			break;
 		case sStatusAlarm:
-			lstatus="Alarm";
+			lstatus = "Alarm";
 			break;
 		case sStatusAlarmDelayed:
-			lstatus="Alarm Delayed";
+			lstatus = "Alarm Delayed";
 			break;
 		case sStatusMotion:
-			lstatus="Motion";
+			lstatus = "Motion";
 			break;
 		case sStatusNoMotion:
-			lstatus="No Motion";
+			lstatus = "No Motion";
 			break;
 		case sStatusPanic:
-			lstatus="Panic";
+			lstatus = "Panic";
 			break;
 		case sStatusPanicOff:
-			lstatus="Panic End";
+			lstatus = "Panic End";
 			break;
 		case sStatusArmAway:
-			lstatus="Arm Away";
+			lstatus = "Arm Away";
 			break;
 		case sStatusArmAwayDelayed:
-			lstatus="Arm Away Delayed";
+			lstatus = "Arm Away Delayed";
 			break;
 		case sStatusArmHome:
-			lstatus="Arm Home";
+			lstatus = "Arm Home";
 			break;
 		case sStatusArmHomeDelayed:
-			lstatus="Arm Home Delayed";
+			lstatus = "Arm Home Delayed";
 			break;
 		case sStatusDisarm:
-			lstatus="Disarm";
+			lstatus = "Disarm";
 			break;
 		case sStatusLightOff:
-			lstatus="Light Off";
+			lstatus = "Light Off";
 			break;
 		case sStatusLightOn:
-			lstatus="Light On";
+			lstatus = "Light On";
 			break;
 		case sStatusLight2Off:
-			lstatus="Light 2 Off";
+			lstatus = "Light 2 Off";
 			break;
 		case sStatusLight2On:
-			lstatus="Light 2 On";
+			lstatus = "Light 2 On";
 			break;
 		case sStatusDark:
-			lstatus="Dark detected";
+			lstatus = "Dark detected";
 			break;
 		case sStatusLight:
-			lstatus="Light Detected";
+			lstatus = "Light Detected";
 			break;
 		case sStatusBatLow:
-			lstatus="Battery low MS10 or XX18 sensor";
+			lstatus = "Battery low MS10 or XX18 sensor";
 			break;
 		case sStatusPairKD101:
-			lstatus="Pair KD101";
+			lstatus = "Pair KD101";
 			break;
 		case sStatusNormalTamper:
-			lstatus="Normal + Tamper";
+			lstatus = "Normal + Tamper";
 			break;
 		case sStatusNormalDelayedTamper:
-			lstatus="Normal Delayed + Tamper";
+			lstatus = "Normal Delayed + Tamper";
 			break;
 		case sStatusAlarmTamper:
-			lstatus="Alarm + Tamper";
+			lstatus = "Alarm + Tamper";
 			break;
 		case sStatusAlarmDelayedTamper:
-			lstatus="Alarm Delayed + Tamper";
+			lstatus = "Alarm Delayed + Tamper";
 			break;
 		case sStatusMotionTamper:
-			lstatus="Motion + Tamper";
+			lstatus = "Motion + Tamper";
 			break;
 		case sStatusNoMotionTamper:
-			lstatus="No Motion + Tamper";
+			lstatus = "No Motion + Tamper";
 			break;
 		}
 		break;
@@ -1632,10 +1778,10 @@ void GetLightStatus(
 		switch (nValue)
 		{
 		case 0:
-			lstatus="Off";
+			lstatus = "Off";
 			break;
 		case 1:
-			lstatus="On";
+			lstatus = "On";
 			break;
 		}
 		break;
@@ -1643,13 +1789,13 @@ void GetLightStatus(
 		switch (nValue)
 		{
 		case curtain_sOpen:
-			lstatus="Off";
+			lstatus = "Off";
 			break;
 		case curtain_sClose:
-			lstatus="On";
+			lstatus = "On";
 			break;
 		case curtain_sStop:
-			lstatus="Stop";
+			lstatus = "Stop";
 			break;
 		}
 		break;
@@ -1669,28 +1815,28 @@ void GetLightStatus(
 				lstatus = "On";
 			break;
 		case blinds_sStop:
-			lstatus="Stop";
+			lstatus = "Stop";
 			break;
 		case blinds_sConfirm:
-			lstatus="Confirm";
+			lstatus = "Confirm";
 			break;
 		case blinds_sLimit:
-			lstatus="Limit";
+			lstatus = "Limit";
 			break;
 		case blinds_slowerLimit:
-			lstatus="Lower Limit";
+			lstatus = "Lower Limit";
 			break;
 		case blinds_sDeleteLimits:
-			lstatus="Delete Limits";
+			lstatus = "Delete Limits";
 			break;
 		case blinds_sChangeDirection:
-			lstatus="Change Direction";
+			lstatus = "Change Direction";
 			break;
 		case blinds_sLeft:
-			lstatus="Left";
+			lstatus = "Left";
 			break;
 		case blinds_sRight:
-			lstatus="Right";
+			lstatus = "Right";
 			break;
 		}
 		break;
@@ -1757,10 +1903,10 @@ void GetLightStatus(
 		}
 		break;
 	case pTypeChime:
-		lstatus="On";
+		lstatus = "On";
 		break;
 	case pTypeRemote:
-		lstatus="On";
+		lstatus = "On";
 		break;
 	case pTypeThermostat2:
 		switch (nValue)
@@ -1777,31 +1923,31 @@ void GetLightStatus(
 		switch (nValue)
 		{
 		case thermostat3_sOff:
-			lstatus="Off";
+			lstatus = "Off";
 			break;
 		case thermostat3_sOn:
-			lstatus="On";
+			lstatus = "On";
 			break;
 		case thermostat3_sUp:
-			lstatus="Up";
+			lstatus = "Up";
 			break;
 		case thermostat3_sDown:
-			lstatus="Down";
+			lstatus = "Down";
 			break;
 		case thermostat3_sRunUp:
-			if (dSubType==sTypeMertikG6RH4T1)
-				lstatus="Run Up";
+			if (dSubType == sTypeMertikG6RH4T1)
+				lstatus = "Run Up";
 			else
-				lstatus="2nd Off";
+				lstatus = "2nd Off";
 			break;
 		case thermostat3_sRunDown:
-			if (dSubType==sTypeMertikG6RH4T1)
-				lstatus="Run Down";
+			if (dSubType == sTypeMertikG6RH4T1)
+				lstatus = "Run Down";
 			else
-				lstatus="2nd On";
+				lstatus = "2nd On";
 			break;
 		case thermostat3_sStop:
-			lstatus="Stop";
+			lstatus = "Stop";
 			break;
 		}
 		break;
@@ -1837,125 +1983,343 @@ void GetLightStatus(
 		}
 		break;
 	case pTypeEvohome:
-		llevel=0;
-		lstatus=CEvohomeBase::GetWebAPIModeName(nValue);
+		llevel = 0;
+		lstatus = CEvohomeBase::GetWebAPIModeName(nValue);
 		break;
 	case pTypeEvohomeRelay:
-		bHaveDimmer=true;
-		maxDimLevel=200;
-		llevel=int(0.5f*atof(sValue.c_str()));
+		bHaveDimmer = true;
+		maxDimLevel = 200;
+		llevel = int(0.5F * atof(sValue.c_str()));
 		switch (nValue)
 		{
 		case light1_sOff:
-			lstatus="Off";
+			lstatus = "Off";
 			break;
 		case light1_sOn:
-			lstatus="On";
+			sprintf(szTmp, "Set Level: %d %%", llevel);
+			if (llevel == 100) {
+				lstatus = "On";
+			}
+			else {
+				lstatus = szTmp;
+			}
 			break;
 		}
 		break;
 	case pTypeFan:
 		switch (dSubType)
 		{
-			case sTypeSiemensSF01:
+		case sTypeSiemensSF01:
+		{
+			switch (nValue)
 			{
-				switch (nValue)
-				{
-					case fan_sTimer:
-						lstatus = "timer";
-						break;
-					case fan_sPlus:
-						lstatus = "+";
-						break;
-					case fan_sMin:
-						lstatus = "-";
-						break;
-					case fan_sLearn:
-						lstatus = "learn";
-						break;
-					case fan_sConfirm:
-						lstatus = "confirm";
-						break;
-					case fan_sLight:
-						lstatus = "light";
-						break;
-				}
+			case fan_sTimer:
+				lstatus = "timer";
+				break;
+			case fan_sPlus:
+				lstatus = "+";
+				break;
+			case fan_sMin:
+				lstatus = "-";
+				break;
+			case fan_sLearn:
+				lstatus = "learn";
+				break;
+			case fan_sConfirm:
+				lstatus = "confirm";
+				break;
+			case fan_sLight:
+				lstatus = "light";
+				break;
 			}
-			break;
-			case sTypeItho:
+		}
+		break;
+		case sTypeItho:
+		{
+			switch (nValue)
 			{
-				switch (nValue)
-				{
-					case fan_Itho1:
-						lstatus = "1";
-						break;
-					case fan_Itho2:
-						lstatus = "2";
-						break;
-					case fan_Itho3:
-						lstatus = "3";
-						break;
-					case fan_IthoTimer:
-						lstatus = "timer";
-						break;
-					case fan_IthoNotAtHome:
-						lstatus = "notathome";
-						break;
-					case fan_IthoLearn:
-						lstatus = "learn";
-						break;
-					case fan_IthoEraseAll:
-						lstatus = "eraseall";
-						break;
-				}
+			case fan_Itho1:
+				lstatus = "1";
+				break;
+			case fan_Itho2:
+				lstatus = "2";
+				break;
+			case fan_Itho3:
+				lstatus = "3";
+				break;
+			case fan_IthoTimer:
+				lstatus = "timer";
+				break;
+			case fan_IthoNotAtHome:
+				lstatus = "notathome";
+				break;
+			case fan_IthoLearn:
+				lstatus = "learn";
+				break;
+			case fan_IthoEraseAll:
+				lstatus = "eraseall";
+				break;
 			}
-			break;
-			case sTypeLucciAir:
+		}
+		break;
+		case sTypeLucciAir:
+		case sTypeWestinghouse:
+		{
+			switch (nValue)
 			{
-				switch (nValue)
-				{
-					case fan_LucciHi:
-						lstatus = "hi";
-						break;
-					case fan_LucciMed:
-						lstatus = "med";
-						break;
-					case fan_LucciLow:
-						lstatus = "low";
-						break;
-					case fan_LucciOff:
-						lstatus = "off";
-						break;
-					case fan_LucciLight:
-						lstatus = "light";
-						break;
-				}
+			case fan_LucciHi:
+				lstatus = "hi";
+				break;
+			case fan_LucciMed:
+				lstatus = "med";
+				break;
+			case fan_LucciLow:
+				lstatus = "low";
+				break;
+			case fan_LucciOff:
+				lstatus = "off";
+				break;
+			case fan_LucciLight:
+				lstatus = "light";
+				break;
 			}
-			break;
+		}
+		break;
+		case sTypeLucciAirDC:
+		{
+			switch (nValue)
+			{
+			case fan_LucciDCPower:
+				lstatus = "pow";
+				break;
+			case fan_LucciDCPlus:
+				lstatus = "plus";
+				break;
+			case fan_LucciDCMin:
+				lstatus = "min";
+				break;
+			case fan_LucciDCLight:
+				lstatus = "light";
+				break;
+			case fan_LucciDCReverse:
+				lstatus = "rev";
+				break;
+			case fan_LucciDCNaturalflow:
+				lstatus = "nat";
+				break;
+			}
+		}
+		break;
+		case sTypeCasafan:
+		{
+			switch (nValue)
+			{
+			case fan_CasafanHi:
+				lstatus = "hi";
+				break;
+			case fan_CasafanMed:
+				lstatus = "med";
+				break;
+			case fan_CasafanLow:
+				lstatus = "low";
+				break;
+			case fan_CasafanOff:
+				lstatus = "off";
+				break;
+			case fan_CasafanLight:
+				lstatus = "light";
+				break;
+			}
+		}
+		break;
+		case sTypeFT1211R:
+		{
+			switch (nValue)
+			{
+			case fan_FT1211Rpower:
+				lstatus = "power";
+				break;
+			case fan_FT1211Rlight:
+				lstatus = "light";
+				break;
+			case fan_FT1211R1:
+				lstatus = "1";
+				break;
+			case fan_FT1211R2:
+				lstatus = "2";
+				break;
+			case fan_FT1211R3:
+				lstatus = "3";
+				break;
+			case fan_FT1211R4:
+				lstatus = "4";
+				break;
+			case fan_FT1211R5:
+				lstatus = "5";
+				break;
+			case fan_FT1211Rfr:
+				lstatus = "f/r";
+				break;
+			case fan_FT1211R1H:
+				lstatus = "1h";
+				break;
+			case fan_FT1211R4H:
+				lstatus = "4h";
+				break;
+			case fan_FT1211R8H:
+				lstatus = "8h";
+				break;
+			}
+		}
+		break;
+		case sTypeFalmec:
+		{
+			switch (nValue)
+			{
+			case fan_FalmecPower:
+				lstatus = "power";
+				break;
+			case fan_FalmecSpeed1:
+				lstatus = "speed 1";
+				break;
+			case fan_FalmecSpeed2:
+				lstatus = "speed 2";
+				break;
+			case fan_FalmecSpeed3:
+				lstatus = "speed 3";
+				break;
+			case fan_FalmecSpeed4:
+				lstatus = "speed 4";
+				break;
+			case fan_FalmecTimer1:
+				lstatus = "timer 1";
+				break;
+			case fan_FalmecTimer2:
+				lstatus = "timer 2";
+				break;
+			case fan_FalmecTimer3:
+				lstatus = "timer 3";
+				break;
+			case fan_FalmecTimer4:
+				lstatus = "timer 4";
+				break;
+			case fan_FalmecLightOn:
+				lstatus = "light on";
+				break;
+			case fan_FalmecLightOff:
+				lstatus = "light off";
+				break;
+			}
+		}
+		break;
+		case sTypeLucciAirDCII:
+		{
+			switch (nValue)
+			{
+			case fan_LucciDCIIOff:
+				lstatus = "off";
+				break;
+			case fan_LucciDCII1:
+				lstatus = "1";
+				break;
+			case fan_LucciDCII2:
+				lstatus = "2";
+				break;
+			case fan_LucciDCII3:
+				lstatus = "3";
+				break;
+			case fan_LucciDCII4:
+				lstatus = "4";
+				break;
+			case fan_LucciDCII5:
+				lstatus = "5";
+				break;
+			case fan_LucciDCII6:
+				lstatus = "6";
+				break;
+			case fan_LucciDCIILight:
+				lstatus = "light";
+				break;
+			case fan_LucciDCIIReverse:
+				lstatus = "reverse";
+				break;
+			}
+		}
+		break;
+		case sTypeNovy:
+		{
+			switch (nValue)
+			{
+			case fan_NovyPower:
+				lstatus = "power";
+				break;
+			case fan_NovyPlus:
+				lstatus = "plus";
+				break;
+			case fan_NovyMin:
+				lstatus = "min";
+				break;
+			case fan_NovyLight:
+				lstatus = "light";
+				break;
+			case fan_NovyLearn:
+				lstatus = "learn";
+				break;
+			}
+		}
+		break;
+		}
+		break;
+	case pTypeHunter:
+		switch (dSubType)
+		{
+		case sTypeHunterfan:
+		{
+			switch (nValue)
+			{
+			case HunterOff:
+				lstatus = "off";
+				break;
+			case HunterLight:
+				lstatus = "light";
+				break;
+			case HunterSpeed1:
+				lstatus = "low";
+				break;
+			case HunterSpeed2:
+				lstatus = "med";
+				break;
+			case HunterSpeed3:
+				lstatus = "high";
+				break;
+			}
+		}
+		break;
 		}
 		break;
 	}
-	if (_log.isTraceEnabled()) _log.Log(LOG_TRACE,"RFXN : GetLightStatus Typ:%2d STyp:%2d nVal:%d sVal:%-4s llvl:%2d isDim:%d maxDim:%2d GrpCmd:%d lstat:%s", 
-		dType,dSubType,nValue,sValue.c_str(),llevel,bHaveDimmer,maxDimLevel,bHaveGroupCmd,lstatus.c_str());
+	//_log.Debug(DEBUG_NORM, "RFXN : GetLightStatus Typ:%2d STyp:%2d nVal:%d sVal:%-4s llvl:%2d isDim:%d maxDim:%2d GrpCmd:%d lstat:%s",
+	//dType, dSubType, nValue, sValue.c_str(), llevel, bHaveDimmer, maxDimLevel, bHaveGroupCmd, lstatus.c_str());
 }
 
 /**
- * Returns a map associating a level value to its name.
- */
-void GetSelectorSwitchStatuses(const std::map<std::string, std::string> & options, std::map<std::string, std::string> & statuses) {
+* Returns a map associating a level value to its name.
+*/
+void GetSelectorSwitchStatuses(const std::map<std::string, std::string>& options, std::map<std::string, std::string>& statuses) {
 	std::map< std::string, std::string >::const_iterator itt = options.find("LevelNames");
 	if (itt != options.end()) {
 		//_log.Log(LOG_STATUS, "DEBUG : Get selector switch statuses...");
 		std::string sOptions = itt->second;
 		std::vector<std::string> strarray;
-		boost::split(strarray, sOptions, boost::is_any_of("|"), boost::token_compress_off);
-		std::vector<std::string>::iterator itt;
+		StringSplit(sOptions, "|", strarray);
 		int i = 0;
 		std::stringstream ss;
-		for (itt = strarray.begin(); (itt != strarray.end()) && (i <= 100); ++itt) {
-			ss.clear(); ss.str(""); ss << i;
+		for (const auto &levelName : strarray)
+		{
+			ss.clear();
+			ss.str("");
+			ss << i;
 			std::string level(ss.str());
-			std::string levelName = *itt;
 			//_log.Log(LOG_STATUS, "DEBUG : Get selector status '%s' for level %s", levelName.c_str(), level.c_str());
 			statuses.insert(std::pair<std::string, std::string>(level.c_str(), levelName.c_str()));
 			i += 10;
@@ -1964,20 +2328,21 @@ void GetSelectorSwitchStatuses(const std::map<std::string, std::string> & option
 }
 
 /**
- * Returns the level value associated to a name.
- */
-int GetSelectorSwitchLevel(const std::map<std::string, std::string> & options, const std::string & levelName) {
+* Returns the level value associated to a name.
+*/
+int GetSelectorSwitchLevel(const std::map<std::string, std::string>& options, const std::string& levelName) {
 	int level = -1; // not found
 	std::map< std::string, std::string >::const_iterator itt = options.find("LevelNames");
 	if (itt != options.end()) {
 		//_log.Log(LOG_STATUS, "DEBUG : Get selector switch level...");
 		std::string sOptions = itt->second;
 		std::vector<std::string> strarray;
-		boost::split(strarray, sOptions, boost::is_any_of("|"), boost::token_compress_off);
-		std::vector<std::string>::iterator itt;
+		StringSplit(sOptions, "|", strarray);
 		int i = 0;
-		for (itt = strarray.begin(); (itt != strarray.end()) && (i <= 100); ++itt) {
-			if (*itt == levelName) {
+		for (const auto &str : strarray)
+		{
+			if (str == levelName)
+			{
 				level = i;
 				break;
 			}
@@ -1988,27 +2353,26 @@ int GetSelectorSwitchLevel(const std::map<std::string, std::string> & options, c
 }
 
 /**
- * Returns the action associated with a level
- */
-std::string GetSelectorSwitchLevelAction(const std::map<std::string, std::string> & options, const int level) {
-	std::string action = ""; // not found
+* Returns the action associated with a level
+*/
+std::string GetSelectorSwitchLevelAction(const std::map<std::string, std::string>& options, const int level) {
 	std::map< std::string, std::string >::const_iterator itt = options.find("LevelActions");
 	if (itt != options.end()) {
 		//_log.Log(LOG_STATUS, "DEBUG : Get selector switch level action...");
 		std::string sOptions = itt->second;
 		std::vector<std::string> strarray;
-		boost::split(strarray, sOptions, boost::is_any_of("|"), boost::token_compress_off);
-		std::vector<std::string>::iterator itt;
+		StringSplit(sOptions, "|", strarray);
 		int i = 0;
-		for (itt = strarray.begin(); (itt != strarray.end()) && (i <= 100); ++itt) {
-			if (i == level) {
-				action = *itt;
-				break;
+		for (const auto &str : strarray)
+		{
+			if (i == level)
+			{
+				return str;
 			}
 			i += 10;
 		}
 	}
-	return action;
+	return "";
 }
 
 bool GetLightCommand(
@@ -2016,191 +2380,200 @@ bool GetLightCommand(
 	const unsigned char dSubType,
 	_eSwitchType switchtype,
 	std::string switchcmd,
-	unsigned char &cmd,
-	const std::map<std::string, std::string> & options
-	)
+	unsigned char& cmd,
+	const std::map<std::string, std::string>& options
+)
 {
-	if (switchtype==STYPE_Contact)
+	if (switchtype == STYPE_Contact && dType != pTypeGeneralSwitch)
 		return false;	//we can not (or will not) switch this type
 
 	switch (dType)
 	{
 	case pTypeLighting1:
-		if (switchtype==STYPE_Doorbell)
+		if (switchtype == STYPE_Doorbell)
 		{
-			if (dSubType==sTypeARC)
+			if (dSubType == sTypeARC)
 			{
-				if ((switchcmd=="On")||(switchcmd=="Group On")||(switchcmd=="Chime"))
+				if ((switchcmd == "On") || (switchcmd == "Group On") || (switchcmd == "Chime"))
 				{
-					cmd=light1_sChime;
+					cmd = light1_sChime;
 					return true;
 				}
 			}
 			else
 			{
 				//not sure yet, maybe more devices need the above chime command
-				if ((switchcmd=="On")||(switchcmd=="Group On"))
+				if ((switchcmd == "On") || (switchcmd == "Group On"))
 				{
-					cmd=light1_sAllOn;
+					cmd = light1_sAllOn;
 					return true;
 				}
 			}
 			//no other combinations for the door switch
 			return false;
 		}
-		else if (switchtype==STYPE_X10Siren)
+		else if (switchtype == STYPE_X10Siren)
 		{
-			if ((switchcmd=="On")||(switchcmd=="All On"))
+			if ((switchcmd == "On") || (switchcmd == "All On"))
 			{
-				cmd=light1_sAllOn;
+				cmd = light1_sAllOn;
 				return true;
 			}
-			else if ((switchcmd=="Off")||(switchcmd=="All Off"))
+			if ((switchcmd == "Off") || (switchcmd == "All Off"))
 			{
-				cmd=light1_sAllOff;
+				cmd = light1_sAllOff;
 				return true;
 			}
 			return false;
 		}
-		if (switchcmd=="Off")
+		if (switchcmd == "Off")
 		{
-			cmd=light1_sOff;
+			cmd = light1_sOff;
 			return true;
-		} else if (switchcmd=="On") {
-			cmd=light1_sOn;
+		}
+		if (switchcmd == "On")
+		{
+			cmd = light1_sOn;
 			return true;
-		} else if (switchcmd=="Dim") {
-			cmd=light1_sDim;
+		}
+		if (switchcmd == "Dim")
+		{
+			cmd = light1_sDim;
 			return true;
-		} else if (switchcmd=="Bright") {
-			cmd=light1_sBright;
+		}
+		if (switchcmd == "Bright")
+		{
+			cmd = light1_sBright;
 			return true;
-		} else if (switchcmd=="All On") {
-			cmd=light1_sAllOn;
+		}
+		if (switchcmd == "All On")
+		{
+			cmd = light1_sAllOn;
 			return true;
-		} else if (switchcmd=="All Off") {
-			cmd=light1_sAllOff;
+		}
+		if (switchcmd == "All Off")
+		{
+			cmd = light1_sAllOff;
 			return true;
-		} else if (switchcmd=="Chime") {
-			cmd=light1_sChime;
+		}
+		if (switchcmd == "Chime")
+		{
+			cmd = light1_sChime;
 			return true;
-		} else
-			return false;
-		break;
+		}
+		return false;
 	case pTypeLighting2:
-		if (switchtype==STYPE_Doorbell)
+		if (switchtype == STYPE_Doorbell)
 		{
-			if ((switchcmd=="On")||(switchcmd=="Group On"))
+			if ((switchcmd == "On") || (switchcmd == "Group On"))
 			{
-				cmd=light2_sGroupOn;
+				cmd = light2_sGroupOn;
 				return true;
 			}
 			//no other combinations for the door switch
 			return false;
 		}
-		else if (switchtype==STYPE_X10Siren)
+		else if (switchtype == STYPE_X10Siren)
 		{
-			if ((switchcmd=="On")||(switchcmd=="Group On"))
+			if ((switchcmd == "On") || (switchcmd == "Group On"))
 			{
-				cmd=light2_sGroupOn;
+				cmd = light2_sGroupOn;
 				return true;
 			}
-			else if ((switchcmd=="Off")||(switchcmd=="Group Off"))
+			if ((switchcmd == "Off") || (switchcmd == "Group Off"))
 			{
-				cmd=light2_sGroupOff;
+				cmd = light2_sGroupOff;
 				return true;
 			}
 			return false;
 		}
-		if (switchcmd=="Off")
+		if (switchcmd == "Off")
 		{
-			cmd=light2_sOff;
+			cmd = light2_sOff;
 			return true;
 		}
-		else if (switchcmd=="On")
+		if (switchcmd == "On")
 		{
-			cmd=light2_sOn;
+			cmd = light2_sOn;
 			return true;
 		}
-		else if (switchcmd=="Set Level")
+		if (switchcmd == "Set Level")
 		{
-			cmd=light2_sSetLevel;
+			cmd = light2_sSetLevel;
 			return true;
 		}
-		else if (switchcmd=="Group Off")
+		if (switchcmd == "Group Off")
 		{
-			cmd=light2_sGroupOff;
+			cmd = light2_sGroupOff;
 			return true;
 		}
-		else if (switchcmd=="Group On")
+		if (switchcmd == "Group On")
 		{
-			cmd=light2_sGroupOn;
+			cmd = light2_sGroupOn;
 			return true;
 		}
-		else if (switchcmd=="Set Group Level")
+		if (switchcmd == "Set Group Level")
 		{
-			cmd=light2_sSetGroupLevel;
+			cmd = light2_sSetGroupLevel;
 			return true;
 		}
-		else if (switchcmd == "Stop")
+		if (switchcmd == "Stop")
 		{
 			cmd = gswitch_sStop;
 			return true;
 		}
-		else if ((switchcmd == "Paused") || (switchcmd == "Pause"))
+		if ((switchcmd == "Paused") || (switchcmd == "Pause"))
 		{
 			cmd = gswitch_sPause;
 			return true;
 		}
-		else if ((switchcmd == "Playing") || (switchcmd == "Play"))
+		if ((switchcmd == "Playing") || (switchcmd == "Play"))
 		{
 			cmd = gswitch_sPlay;
 			return true;
 		}
-		else if (switchcmd == "Play Playlist")
+		if (switchcmd == "Play Playlist")
 		{
 			cmd = gswitch_sPlayPlaylist;
 			return true;
 		}
-		else if (switchcmd == "Play Favorites")
+		if (switchcmd == "Play Favorites")
 		{
 			cmd = gswitch_sPlayFavorites;
 			return true;
 		}
-		else if (switchcmd == "Set Volume")
+		if (switchcmd == "Set Volume")
 		{
 			cmd = gswitch_sSetVolume;
 			return true;
 		}
-		else if (switchcmd == "Execute")
+		if (switchcmd == "Execute")
 		{
 			cmd = gswitch_sExecute;
 			return true;
 		}
-		else
-			return false;
-		break;
+		return false;
 	case pTypeLighting4:
-		cmd=light2_sOn;
+		cmd = light2_sOn;
 		return true;
 	case pTypeLighting5:
-		if (dSubType==sTypeLivolo)
+		if (dSubType == sTypeLivolo)
 		{
-			if (switchcmd=="Set Level")
+			if (switchcmd == "Set Level")
 			{
-				cmd=light5_sLivoloGang2Toggle;
+				cmd = light5_sLivoloGang2Toggle;
 				return true;
 			}
 		}
-		else if ((dSubType == sTypeTRC02) || (dSubType == sTypeTRC02_2))
+		if ((dSubType == sTypeTRC02) || (dSubType == sTypeTRC02_2))
 		{
-			if (switchcmd=="Set Color")
+			if (switchcmd == "Set Color")
 			{
-				cmd=light5_sRGBcolormin+1; //color set is light5_sRGBcolormin+1 till 255?
+				cmd = light5_sRGBcolormin + 1; //color set is light5_sRGBcolormin+1 till 255?
 				return true;
 			}
 		}
-		else if ((dSubType != sTypeLightwaveRF) && (dSubType != sTypeIT))
+		if ((dSubType != sTypeLightwaveRF) && (dSubType != sTypeIT))
 		{
 			//Only LightwaveRF/IT devices have a set-level
 			if (switchcmd == "Set Level")
@@ -2217,122 +2590,118 @@ bool GetLightCommand(
 				switchcmd = "Stop inline relay";
 		}
 
- 		if (switchtype==STYPE_Doorbell)
- 		{
-			if ((switchcmd=="On")||(switchcmd=="Group On"))
+		if (switchtype == STYPE_Doorbell)
+		{
+			if ((switchcmd == "On") || (switchcmd == "Group On"))
 			{
-				cmd=light5_sGroupOn;
+				cmd = light5_sGroupOn;
 				return true;
 			}
 			//no other combinations for the door switch
 			return false;
 		}
-		else if (switchtype==STYPE_X10Siren)
+		if (switchtype == STYPE_X10Siren)
 		{
-			if ((switchcmd=="On")||(switchcmd=="Group On"))
+			if ((switchcmd == "On") || (switchcmd == "Group On"))
 			{
-				cmd=light5_sGroupOn;
+				cmd = light5_sGroupOn;
 				return true;
 			}
-			else if ((switchcmd=="Off")||(switchcmd=="Group Off"))
+			if ((switchcmd == "Off") || (switchcmd == "Group Off"))
 			{
-				cmd=light5_sGroupOff;
+				cmd = light5_sGroupOff;
 				return true;
 			}
 			return false;
 		}
-		if (switchcmd=="Off")
+		if (switchcmd == "Off")
 		{
-			cmd=light5_sOff;
+			cmd = light5_sOff;
 			return true;
 		}
-		else if (switchcmd=="On")
+		if (switchcmd == "On")
 		{
-			cmd=light5_sOn;
+			cmd = light5_sOn;
 			return true;
 		}
-		else if (switchcmd=="Set Level")
+		if (switchcmd == "Set Level")
 		{
-			cmd=light5_sSetLevel;
+			cmd = light5_sSetLevel;
 			return true;
 		}
-		else if (switchcmd=="Group Off")
+		if (switchcmd == "Group Off")
 		{
-			cmd=light5_sGroupOff;
+			cmd = light5_sGroupOff;
 			return true;
 		}
-		else if (switchcmd=="Group On")
- 		{
- 			cmd=light5_sGroupOn;
+		if (switchcmd == "Group On")
+		{
+			cmd = light5_sGroupOn;
 			return true;
 		}
-		else if (switchcmd=="Close inline relay")
+		if (switchcmd == "Close inline relay")
 		{
-			cmd=light5_sClose;
+			cmd = light5_sClose;
 			return true;
 		}
-		else if (switchcmd=="Stop inline relay")
+		if (switchcmd == "Stop inline relay")
 		{
-			cmd=light5_sStop;
+			cmd = light5_sStop;
 			return true;
 		}
-		else if (switchcmd=="Open inline relay")
+		if (switchcmd == "Open inline relay")
 		{
-			cmd=light5_sOpen;
- 			return true;
+			cmd = light5_sOpen;
+			return true;
 		}
-		else if (switchcmd == "Group Mood 1")
+		if (switchcmd == "Group Mood 1")
 		{
 			cmd = light5_sMood1;
 			return true;
 		}
-		else if (switchcmd == "Group Mood 2")
+		if (switchcmd == "Group Mood 2")
 		{
 			cmd = light5_sMood2;
 			return true;
 		}
-		else if (switchcmd == "Group Mood 3")
+		if (switchcmd == "Group Mood 3")
 		{
 			cmd = light5_sMood3;
 			return true;
 		}
-		else if (switchcmd == "Group Mood 4")
+		if (switchcmd == "Group Mood 4")
 		{
 			cmd = light5_sMood4;
 			return true;
 		}
-		else if (switchcmd == "Group Mood 5")
+		if (switchcmd == "Group Mood 5")
 		{
 			cmd = light5_sMood5;
 			return true;
 		}
-		else
-			return false;
-		break;
+		return false;
 	case pTypeLighting6:
-		if (switchcmd=="Off")
+		if (switchcmd == "Off")
 		{
-			cmd=light6_sOff;
+			cmd = light6_sOff;
 			return true;
 		}
-		else if (switchcmd=="On")
+		if (switchcmd == "On")
 		{
-			cmd=light6_sOn;
+			cmd = light6_sOn;
 			return true;
 		}
-		else if (switchcmd=="Group Off")
+		if (switchcmd == "Group Off")
 		{
-			cmd=light6_sGroupOff;
+			cmd = light6_sGroupOff;
 			return true;
 		}
-		else if (switchcmd=="Group On")
+		if (switchcmd == "Group On")
 		{
-			cmd=light6_sGroupOn;
+			cmd = light6_sGroupOn;
 			return true;
 		}
-		else
-			return false;
-		break;
+		return false;
 	case pTypeHomeConfort:
 		if (switchtype == STYPE_Doorbell)
 		{
@@ -2349,24 +2718,154 @@ bool GetLightCommand(
 			cmd = HomeConfort_sOff;
 			return true;
 		}
-		else if (switchcmd == "On")
+		if (switchcmd == "On")
 		{
 			cmd = HomeConfort_sOn;
 			return true;
 		}
-		else if (switchcmd == "Group Off")
+		if (switchcmd == "Group Off")
 		{
 			cmd = HomeConfort_sGroupOff;
 			return true;
 		}
-		else if (switchcmd == "Group On")
+		if (switchcmd == "Group On")
 		{
 			cmd = HomeConfort_sGroupOn;
 			return true;
 		}
-		else
-			return false;
-		break;
+		return false;
+	case pTypeFS20:
+		if (switchcmd == "Off")
+		{
+			cmd = fs20_sOff;
+			return true;
+		}
+		if ((switchcmd == "Dim1") || (switchcmd == "Set Level"))
+		{
+			cmd = fs20_sDimlevel_1;
+			return true;
+		}
+		if (switchcmd == "Dim2")
+		{
+			cmd = fs20_sDimlevel_2;
+			return true;
+		}
+		if (switchcmd == "Dim3")
+		{
+			cmd = fs20_sDimlevel_3;
+			return true;
+		}
+		if (switchcmd == "Dim4")
+		{
+			cmd = fs20_sDimlevel_4;
+			return true;
+		}
+		if (switchcmd == "Dim5")
+		{
+			cmd = fs20_sDimlevel_5;
+			return true;
+		}
+		if (switchcmd == "Dim6")
+		{
+			cmd = fs20_sDimlevel_6;
+			return true;
+		}
+		if (switchcmd == "Dim7")
+		{
+			cmd = fs20_sDimlevel_7;
+			return true;
+		}
+		if (switchcmd == "Dim8")
+		{
+			cmd = fs20_sDimlevel_8;
+			return true;
+		}
+		if (switchcmd == "Dim9")
+		{
+			cmd = fs20_sDimlevel_9;
+			return true;
+		}
+		if (switchcmd == "Dim10")
+		{
+			cmd = fs20_sDimlevel_10;
+			return true;
+		}
+		if (switchcmd == "Dim11")
+		{
+			cmd = fs20_sDimlevel_11;
+			return true;
+		}
+		if (switchcmd == "Dim12")
+		{
+			cmd = fs20_sDimlevel_12;
+			return true;
+		}
+		if (switchcmd == "Dim13")
+		{
+			cmd = fs20_sDimlevel_13;
+			return true;
+		}
+		if (switchcmd == "Dim14")
+		{
+			cmd = fs20_sDimlevel_14;
+			return true;
+		}
+		if (switchcmd == "Dim15")
+		{
+			cmd = fs20_sDimlevel_15;
+			return true;
+		}
+		if (switchcmd == "On")
+		{
+			cmd = fs20_sOn_100;
+			return true;
+		}
+		if (switchcmd == "OnDim")
+		{
+			cmd = fs20_sOn_last_dim;
+			return true;
+		}
+		if (switchcmd == "Toggle")
+		{
+			cmd = fs20_sToggle_On_Off;
+			return true;
+		}
+		if (switchcmd == "StartDim")
+		{
+			cmd = fs20_sStart_dim_cycle;
+			return true;
+		}
+		if (switchcmd == "Program")
+		{
+			cmd = fs20_sProgram_timer;
+			return true;
+		}
+		if (switchcmd == "Request")
+		{
+			cmd = fs20_sRequest_status;
+			return true;
+		}
+		if (switchcmd == "OffTime")
+		{
+			cmd = fs20_sOff_for_time_period;
+			return true;
+		}
+		if (switchcmd == "OnTime")
+		{
+			cmd = fs20_sOn_100_for_time_period;
+			return true;
+		}
+		if (switchcmd == "OnDimTime")
+		{
+			cmd = fs20_sOn_last_dim_level_period;
+			return true;
+		}
+		if (switchcmd == "Reset")
+		{
+			cmd = fs20_sReset;
+			return true;
+		}
+		return false;
 	case pTypeGeneralSwitch:
 		if (switchtype == STYPE_Doorbell)
 		{
@@ -2378,21 +2877,22 @@ bool GetLightCommand(
 			//no other combinations for the door switch
 			return false;
 		}
-		else if (switchtype == STYPE_X10Siren)
+		if (switchtype == STYPE_X10Siren)
 		{
 			if ((switchcmd == "On") || (switchcmd == "Group On"))
 			{
 				cmd = gswitch_sGroupOn;
 				return true;
 			}
-			else if ((switchcmd == "Off") || (switchcmd == "Group Off"))
+			if ((switchcmd == "Off") || (switchcmd == "Group Off"))
 			{
 				cmd = gswitch_sGroupOff;
 				return true;
 			}
 			return false;
 		}
-		else if (switchtype == STYPE_Selector) {
+		if (switchtype == STYPE_Selector)
+		{
 			if ((switchcmd == "Paused") ||
 				(switchcmd == "Pause") ||
 				(switchcmd == "Playing") ||
@@ -2506,289 +3006,280 @@ bool GetLightCommand(
 			return true;
 		}
 		break;
-	case pTypeLimitlessLights:
-		if (switchcmd=="Off")
+	case pTypeColorSwitch:
+		if (switchcmd == "Off")
 		{
-			cmd=Limitless_LedOff;
+			cmd = Color_LedOff;
 			return true;
 		}
-		else if (switchcmd=="On")
+		if (switchcmd == "On")
 		{
-			cmd=Limitless_LedOn;
+			cmd = Color_LedOn;
 			return true;
 		}
-		else if (switchcmd=="Set Color")
+		if (switchcmd == "Set Color")
 		{
-			cmd=Limitless_SetRGBColour;
+			cmd = Color_SetColor;
 			return true;
 		}
-		else if (
-			(switchcmd=="Set Brightness")||
-			(switchcmd=="Set Level")
-			)
+		if ((switchcmd == "Set Brightness") || (switchcmd == "Set Level"))
 		{
-			cmd=Limitless_SetBrightnessLevel;
+			cmd = Color_SetBrightnessLevel;
 			return true;
 		}
-		else if (switchcmd=="Set Kelvin Level")
+		if (switchcmd == "Set White")
 		{
-			cmd=Limitless_SetKelvinLevel;
+			cmd = Color_SetColorToWhite;
 			return true;
 		}
-		else if (switchcmd == "Set White")
+		if (switchcmd == "Set Full")
 		{
-			cmd = Limitless_SetColorToWhite;
+			cmd = Color_SetColorToWhite;
 			return true;
 		}
-		else if (switchcmd == "Set Full")
+		if (switchcmd == "Set Night")
 		{
-			cmd=Limitless_SetColorToWhite;
+			cmd = Color_NightMode;
 			return true;
 		}
-		else if (switchcmd == "Set Night")
+		if (switchcmd == "Bright Up")
 		{
-			cmd = Limitless_NightMode;
+			cmd = Color_SetBrightUp;
 			return true;
 		}
-		else if (switchcmd == "Bright Up")
+		if (switchcmd == "Bright Down")
 		{
-			cmd = Limitless_SetBrightUp;
+			cmd = Color_SetBrightDown;
 			return true;
 		}
-		else if (switchcmd == "Bright Down")
+		if (switchcmd == "Disco Mode")
 		{
-			cmd = Limitless_SetBrightDown;
+			cmd = Color_DiscoMode;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode")
+		if (switchcmd == "Disco Mode 1")
 		{
-			cmd = Limitless_DiscoMode;
+			cmd = Color_DiscoMode_1;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 1")
+		if (switchcmd == "Disco Mode 2")
 		{
-			cmd = Limitless_DiscoMode_1;
+			cmd = Color_DiscoMode_2;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 2")
+		if (switchcmd == "Disco Mode 3")
 		{
-			cmd = Limitless_DiscoMode_2;
+			cmd = Color_DiscoMode_3;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 3")
+		if (switchcmd == "Disco Mode 4")
 		{
-			cmd = Limitless_DiscoMode_3;
+			cmd = Color_DiscoMode_4;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 4")
+		if (switchcmd == "Disco Mode 5")
 		{
-			cmd = Limitless_DiscoMode_4;
+			cmd = Color_DiscoMode_5;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 5")
+		if (switchcmd == "Disco Mode 6")
 		{
-			cmd = Limitless_DiscoMode_5;
+			cmd = Color_DiscoMode_6;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 6")
+		if (switchcmd == "Disco Mode 7")
 		{
-			cmd = Limitless_DiscoMode_6;
+			cmd = Color_DiscoMode_7;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 7")
+		if (switchcmd == "Disco Mode 8")
 		{
-			cmd = Limitless_DiscoMode_7;
+			cmd = Color_DiscoMode_8;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 8")
+		if (switchcmd == "Disco Mode 9")
 		{
-			cmd = Limitless_DiscoMode_8;
+			cmd = Color_DiscoMode_9;
 			return true;
 		}
-		else if (switchcmd == "Disco Mode 9")
+		if (switchcmd == "Disco Up")
 		{
-			cmd = Limitless_DiscoMode_9;
+			cmd = Color_RGBDiscoNext;
 			return true;
 		}
-		else if (switchcmd == "Disco Up")
+		if (switchcmd == "Disco Down")
 		{
-			cmd = Limitless_RGBDiscoNext;
+			cmd = Color_RGBDiscoPrevious;
 			return true;
 		}
-		else if (switchcmd == "Disco Down")
+		if (switchcmd == "Speed Up")
 		{
-			cmd = Limitless_RGBDiscoPrevious;
+			cmd = Color_DiscoSpeedFaster;
 			return true;
 		}
-		else if (switchcmd == "Speed Up")
+		if (switchcmd == "Speed Up Long")
 		{
-			cmd = Limitless_DiscoSpeedFaster;
+			cmd = Color_DiscoSpeedFasterLong;
 			return true;
 		}
-		else if (switchcmd == "Speed Up Long")
+		if (switchcmd == "Speed Down")
 		{
-			cmd = Limitless_DiscoSpeedFasterLong;
+			cmd = Color_DiscoSpeedSlower;
 			return true;
 		}
-		else if (switchcmd == "Speed Down")
+		if (switchcmd == "Speed Minimal")
 		{
-			cmd = Limitless_DiscoSpeedSlower;
+			cmd = Color_DiscoSpeedMinimal;
 			return true;
 		}
-		else if (switchcmd == "Speed Minimal")
+		if (switchcmd == "Speed Maximal")
 		{
-			cmd = Limitless_DiscoSpeedMinimal;
+			cmd = Color_DiscoSpeedMaximal;
 			return true;
 		}
-		else if (switchcmd == "Speed Maximal")
+		if (switchcmd == "Warmer")
 		{
-			cmd = Limitless_DiscoSpeedMaximal;
+			cmd = Color_WarmWhiteIncrease;
 			return true;
 		}
-		else if (switchcmd == "Warmer")
+		if (switchcmd == "Cooler")
 		{
-			cmd = Limitless_WarmWhiteIncrease;
+			cmd = Color_CoolWhiteIncrease;
 			return true;
 		}
-		else if (switchcmd == "Cooler")
-		{
-			cmd = Limitless_CoolWhiteIncrease;
-			return true;
-		}
-		else
-			return false;
-		break;
+		return false;
 	case pTypeSecurity1:
 		if (
-			(dSubType==sTypeKD101)||
-			(dSubType==sTypeSA30)
+			(dSubType == sTypeKD101) ||
+			(dSubType == sTypeSA30) ||
+			(dSubType == sTypeRM174RF)
 			)
 		{
-			if ((switchcmd=="On")||(switchcmd=="All On"))
+			if ((switchcmd == "On") || (switchcmd == "All On"))
 			{
-				cmd=sStatusPanic;
+				cmd = sStatusPanic;
 				return true;
 			}
-			else if (switchcmd == "Off")
+			if (switchcmd == "Off")
 			{
 				cmd = sStatusNormal;
 				return true;
 			}
 		}
-		else if (dSubType==sTypeSecX10M)
+		if (dSubType == sTypeSecX10M)
 		{
-			if (switchcmd=="Motion")
+			if (switchcmd == "Motion")
 			{
-				cmd=sStatusMotion;
+				cmd = sStatusMotion;
 				return true;
 			}
-			else if (switchcmd=="No Motion")
+			if (switchcmd == "No Motion")
 			{
-				cmd=sStatusNoMotion;
+				cmd = sStatusNoMotion;
 				return true;
 			}
 		}
-		else if ((dSubType==sTypeSecX10R)||(dSubType==sTypeMeiantech))
+		if ((dSubType == sTypeSecX10R) || (dSubType == sTypeMeiantech))
 		{
-			if (switchcmd=="On")
-			{
-				cmd=sStatusArmAway;
-				return true;
-			}
-			else if (switchcmd=="Off")
-			{
-				cmd=sStatusDisarm;
-				return true;
-			}
-			else if (switchcmd=="Arm Home")
-			{
-				cmd=sStatusArmHome;
-				return true;
-			}
-			else if (switchcmd=="Arm Away")
-			{
-				cmd=sStatusArmAway;
-				return true;
-			}
-			else if (switchcmd == "Panic")
-			{
-				cmd = sStatusPanic;
-				return true;
-			}
-			else if (switchcmd == "Disarm")
-			{
-				cmd = sStatusDisarm;
-				return true;
-			}
-		}
-		else if (dSubType==sTypeSecX10)
-		{
-			if (switchcmd=="Normal")
-			{
-				cmd=sStatusNormal;
-				return true;
-			}
-			else if (switchcmd=="Alarm")
-			{
-				cmd=sStatusAlarm;
-				return true;
-			}
-			else if (switchcmd=="Normal Delayed")
-			{
-				cmd=sStatusNormalDelayed;
-				return true;
-			}
-			else if (switchcmd=="Alarm Delayed")
-			{
-				cmd=sStatusAlarmDelayed;
-				return true;
-			}
-			else if (switchcmd == "Arm Home")
-			{
-				cmd = sStatusArmHome;
-				return true;
-			}
-			else if (switchcmd == "Arm Home Delayed")
-			{
-				cmd = sStatusArmHomeDelayed;
-				return true;
-			}
-			else if (switchcmd == "Arm Away")
+			if (switchcmd == "On")
 			{
 				cmd = sStatusArmAway;
 				return true;
 			}
-			else if (switchcmd == "Arm Away Delayed")
-			{
-				cmd = sStatusArmAwayDelayed;
-				return true;
-			}
-			else if (switchcmd == "Panic")
-			{
-				cmd = sStatusPanic;
-				return true;
-			}
-			else if (switchcmd == "Disarm")
+			if (switchcmd == "Off")
 			{
 				cmd = sStatusDisarm;
 				return true;
 			}
-			else if (switchcmd == "Light On")
+			if (switchcmd == "Arm Home")
+			{
+				cmd = sStatusArmHome;
+				return true;
+			}
+			if (switchcmd == "Arm Away")
+			{
+				cmd = sStatusArmAway;
+				return true;
+			}
+			if (switchcmd == "Panic")
+			{
+				cmd = sStatusPanic;
+				return true;
+			}
+			if (switchcmd == "Disarm")
+			{
+				cmd = sStatusDisarm;
+				return true;
+			}
+		}
+		if (dSubType == sTypeSecX10)
+		{
+			if (switchcmd == "Normal")
+			{
+				cmd = sStatusNormal;
+				return true;
+			}
+			if (switchcmd == "Alarm")
+			{
+				cmd = sStatusAlarm;
+				return true;
+			}
+			if (switchcmd == "Normal Delayed")
+			{
+				cmd = sStatusNormalDelayed;
+				return true;
+			}
+			if (switchcmd == "Alarm Delayed")
+			{
+				cmd = sStatusAlarmDelayed;
+				return true;
+			}
+			if (switchcmd == "Arm Home")
+			{
+				cmd = sStatusArmHome;
+				return true;
+			}
+			if (switchcmd == "Arm Home Delayed")
+			{
+				cmd = sStatusArmHomeDelayed;
+				return true;
+			}
+			if (switchcmd == "Arm Away")
+			{
+				cmd = sStatusArmAway;
+				return true;
+			}
+			if (switchcmd == "Arm Away Delayed")
+			{
+				cmd = sStatusArmAwayDelayed;
+				return true;
+			}
+			if (switchcmd == "Panic")
+			{
+				cmd = sStatusPanic;
+				return true;
+			}
+			if (switchcmd == "Disarm")
+			{
+				cmd = sStatusDisarm;
+				return true;
+			}
+			if (switchcmd == "Light On")
 			{
 				cmd = sStatusLightOn;
 				return true;
 			}
-			else if (switchcmd == "Light Off")
+			if (switchcmd == "Light Off")
 			{
 				cmd = sStatusLightOff;
 				return true;
 			}
-			else if (switchcmd == "Light 2 On")
+			if (switchcmd == "Light 2 On")
 			{
 				cmd = sStatusLight2On;
 				return true;
 			}
-			else if (switchcmd == "Light 2 Off")
+			if (switchcmd == "Light 2 Off")
 			{
 				cmd = sStatusLight2Off;
 				return true;
@@ -2798,259 +3289,258 @@ bool GetLightCommand(
 	case pTypeSecurity2:
 		cmd = 0;
 		return true;
-		break;
 	case pTypeCurtain:
+	{
+		if (switchcmd == "On")
 		{
-			if (switchcmd=="On")
-			{
-				cmd=curtain_sClose;
-			}
-			else if (switchcmd=="Off")
-			{
-				cmd=curtain_sOpen;
-			}
-			else
-			{
-				cmd=curtain_sStop;
-			}
-			return true;
+			cmd = curtain_sClose;
 		}
-		break;
+		else if (switchcmd == "Off")
+		{
+			cmd = curtain_sOpen;
+		}
+		else
+		{
+			cmd = curtain_sStop;
+		}
+		return true;
+	}
+	break;
 	case pTypeBlinds:
+	{
+		if (switchcmd == "On")
 		{
-			if (switchcmd=="On")
-			{
-				if (dSubType == sTypeBlindsT10)
-					cmd = blinds_sOpen;
-				else
-					cmd = blinds_sClose;
-			}
-			else if (switchcmd=="Off")
-			{
-				if (dSubType == sTypeBlindsT10)
-					cmd = blinds_sClose;
-				else
-					cmd = blinds_sOpen;
-			}
+			if (dSubType == sTypeBlindsT10)
+				cmd = blinds_sOpen;
 			else
-			{
-				cmd=blinds_sStop;
-			}
-			return true;
+				cmd = blinds_sClose;
 		}
-		break;
+		else if (switchcmd == "Off")
+		{
+			if (dSubType == sTypeBlindsT10)
+				cmd = blinds_sClose;
+			else
+				cmd = blinds_sOpen;
+		}
+		else
+		{
+			cmd = blinds_sStop;
+		}
+		return true;
+	}
+	break;
 	case pTypeRFY:
+	{
+		if (switchtype == STYPE_OnOff)
 		{
-			if (switchtype == STYPE_OnOff)
-			{
-				/*
-				Venetian Blind in US mode:
-				-up / down(transmit < 0.5 seconds) : open or close
-				-up / down(transmit > 2seconds) : change angle
+			/*
+			Venetian Blind in US mode:
+			-up / down(transmit < 0.5 seconds) : open or close
+			-up / down(transmit > 2seconds) : change angle
 
-				Venetian Blind in Europe mode :
-				-up / down(transmit < 0.5 seconds) : change angle
-				-up / down(transmit > 2seconds) : open or close
-				*/
-				if (switchcmd == "On")
-				{
-					cmd = rfy_sUp;
-				}
-				else if (switchcmd == "Off")
-				{
-					cmd = rfy_sDown;
-				}
-			}
-			else
-			{
-				/*
-				Venetian Blind in US mode:
-				-up / down(transmit < 0.5 seconds) : open or close
-				-up / down(transmit > 2seconds) : change angle
-
-				Venetian Blind in Europe mode :
-				-up / down(transmit < 0.5 seconds) : change angle
-				-up / down(transmit > 2seconds) : open or close
-				*/
-				if (switchcmd == "On")
-				{
-					if (switchtype == STYPE_VenetianBlindsUS)
-					{
-						cmd = rfy_s05SecDown;
-					}
-					else if (switchtype == STYPE_VenetianBlindsEU)
-					{
-						cmd = rfy_s2SecDown;
-					}
-					else
-					{
-						cmd = rfy_sDown;
-					}
-				}
-				else if (switchcmd == "Off")
-				{
-					if (switchtype == STYPE_VenetianBlindsUS)
-					{
-						cmd = rfy_s05SecUp;
-					}
-					else if (switchtype == STYPE_VenetianBlindsEU)
-					{
-						cmd = rfy_s2SecUp;
-					}
-					else
-					{
-						cmd = rfy_sUp;
-					}
-				}
-				else if (switchcmd == "Stop")
-				{
-					cmd = rfy_sStop;
-				}
-				else if (switchcmd == "Up")
-				{
-					cmd = rfy_sUp;
-				}
-				else if (switchcmd == "UpStop")
-				{
-					cmd = rfy_sUpStop;
-				}
-				else if (switchcmd == "Down")
-				{
-					cmd = rfy_sDown;
-				}
-				else if (switchcmd == "DownStop")
-				{
-					cmd = rfy_sDownStop;
-				}
-				else if (switchcmd == "UpDown")
-				{
-					cmd = rfy_sUpDown;
-				}
-				else if (switchcmd == "ListRemotes")
-				{
-					cmd = rfy_sListRemotes;
-				}
-				else if (switchcmd == "Program")
-				{
-					cmd = rfy_sProgram;
-				}
-				else if (switchcmd == "Program2Seconds")
-				{
-					cmd = rfy_s2SecProgram;
-				}
-				else if (switchcmd == "Program7Seconds")
-				{
-					cmd = rfy_s7SecProgram;
-				}
-				else if (switchcmd == "Stop2Seconds")
-				{
-					cmd = rfy_s2SecStop;
-				}
-				else if (switchcmd == "Stop5Seconds")
-				{
-					cmd = rfy_s5SecStop;
-				}
-				else if (switchcmd == "UpDown5Seconds")
-				{
-					cmd = rfy_s5SecUpDown;
-				}
-				else if (switchcmd == "EraseThis") //from the RFXtrx
-				{
-					cmd = rfy_sEraseThis;
-				}
-				else if (switchcmd == "EraseAll") //from the RFXtrx
-				{
-					cmd = rfy_sEraseAll;
-				}
-				else if (switchcmd == "Up05Seconds")
-				{
-					cmd = rfy_s05SecUp;
-				}
-				else if (switchcmd == "Down05Seconds")
-				{
-					cmd = rfy_s05SecDown;
-				}
-				else if (switchcmd == "Up2Seconds")
-				{
-					cmd = rfy_s2SecUp;
-				}
-				else if (switchcmd == "Down2Seconds")
-				{
-					cmd = rfy_s2SecDown;
-				}
-				else if (switchcmd == "EnableSunWind")
-				{
-					cmd = rfy_sEnableSunWind;
-				}
-				else if (switchcmd == "DisableSunWind")
-				{
-					cmd = rfy_sDisableSun;
-				}
-				else
-				{
-					cmd = rfy_sStop;
-				}
-			}
-			return true;
-		}
-		break;
-	case pTypeRemote:
-		cmd=light2_sOn;
-		break;
-	case pTypeThermostat2:
-		{
+			Venetian Blind in Europe mode :
+			-up / down(transmit < 0.5 seconds) : change angle
+			-up / down(transmit > 2seconds) : open or close
+			*/
 			if (switchcmd == "On")
 			{
-				cmd = thermostat2_sOn;
+				cmd = rfy_sUp;
 			}
 			else if (switchcmd == "Off")
 			{
-				cmd = thermostat2_sOff;
+				cmd = rfy_sDown;
 			}
-			else
-			{
-				cmd = thermostat2_sOff;
-			}
-			return true;
 		}
-		break;
-	case pTypeThermostat3:
+		else
 		{
-			if (switchcmd=="On")
+			/*
+			Venetian Blind in US mode:
+			-up / down(transmit < 0.5 seconds) : open or close
+			-up / down(transmit > 2seconds) : change angle
+
+			Venetian Blind in Europe mode :
+			-up / down(transmit < 0.5 seconds) : change angle
+			-up / down(transmit > 2seconds) : open or close
+			*/
+			if (switchcmd == "On")
 			{
-				cmd=thermostat3_sOn;
+				if (switchtype == STYPE_VenetianBlindsUS)
+				{
+					cmd = rfy_s05SecDown;
+				}
+				else if (switchtype == STYPE_VenetianBlindsEU)
+				{
+					cmd = rfy_s2SecDown;
+				}
+				else
+				{
+					cmd = rfy_sDown;
+				}
 			}
-			else if (switchcmd=="Off")
+			else if (switchcmd == "Off")
 			{
-				cmd=thermostat3_sOff;
-			}
-			else if (switchcmd == "Up")
-			{
-				cmd = thermostat3_sUp;
-			}
-			else if (switchcmd == "Down")
-			{
-				cmd = thermostat3_sDown;
-			}
-			else if (switchcmd == "Run Up")
-			{
-				cmd = thermostat3_sRunUp;
-			}
-			else if (switchcmd == "Run Down")
-			{
-				cmd = thermostat3_sRunDown;
+				if (switchtype == STYPE_VenetianBlindsUS)
+				{
+					cmd = rfy_s05SecUp;
+				}
+				else if (switchtype == STYPE_VenetianBlindsEU)
+				{
+					cmd = rfy_s2SecUp;
+				}
+				else
+				{
+					cmd = rfy_sUp;
+				}
 			}
 			else if (switchcmd == "Stop")
 			{
-				cmd = thermostat3_sStop;
+				cmd = rfy_sStop;
+			}
+			else if (switchcmd == "Up")
+			{
+				cmd = rfy_sUp;
+			}
+			else if (switchcmd == "UpStop")
+			{
+				cmd = rfy_sUpStop;
+			}
+			else if (switchcmd == "Down")
+			{
+				cmd = rfy_sDown;
+			}
+			else if (switchcmd == "DownStop")
+			{
+				cmd = rfy_sDownStop;
+			}
+			else if (switchcmd == "UpDown")
+			{
+				cmd = rfy_sUpDown;
+			}
+			else if (switchcmd == "ListRemotes")
+			{
+				cmd = rfy_sListRemotes;
+			}
+			else if (switchcmd == "Program")
+			{
+				cmd = rfy_sProgram;
+			}
+			else if (switchcmd == "Program2Seconds")
+			{
+				cmd = rfy_s2SecProgram;
+			}
+			else if (switchcmd == "Program7Seconds")
+			{
+				cmd = rfy_s7SecProgram;
+			}
+			else if (switchcmd == "Stop2Seconds")
+			{
+				cmd = rfy_s2SecStop;
+			}
+			else if (switchcmd == "Stop5Seconds")
+			{
+				cmd = rfy_s5SecStop;
+			}
+			else if (switchcmd == "UpDown5Seconds")
+			{
+				cmd = rfy_s5SecUpDown;
+			}
+			else if (switchcmd == "EraseThis") //from the RFXtrx
+			{
+				cmd = rfy_sEraseThis;
+			}
+			else if (switchcmd == "EraseAll") //from the RFXtrx
+			{
+				cmd = rfy_sEraseAll;
+			}
+			else if (switchcmd == "Up05Seconds")
+			{
+				cmd = rfy_s05SecUp;
+			}
+			else if (switchcmd == "Down05Seconds")
+			{
+				cmd = rfy_s05SecDown;
+			}
+			else if (switchcmd == "Up2Seconds")
+			{
+				cmd = rfy_s2SecUp;
+			}
+			else if (switchcmd == "Down2Seconds")
+			{
+				cmd = rfy_s2SecDown;
+			}
+			else if (switchcmd == "EnableSunWind")
+			{
+				cmd = rfy_sEnableSunWind;
+			}
+			else if (switchcmd == "DisableSunWind")
+			{
+				cmd = rfy_sDisableSun;
 			}
 			else
 			{
-				cmd=thermostat3_sOff;
+				cmd = rfy_sStop;
 			}
-			return true;
 		}
+		return true;
+	}
+	break;
+	case pTypeRemote:
+		cmd = light2_sOn;
 		break;
+	case pTypeThermostat2:
+	{
+		if (switchcmd == "On")
+		{
+			cmd = thermostat2_sOn;
+		}
+		else if (switchcmd == "Off")
+		{
+			cmd = thermostat2_sOff;
+		}
+		else
+		{
+			cmd = thermostat2_sOff;
+		}
+		return true;
+	}
+	break;
+	case pTypeThermostat3:
+	{
+		if (switchcmd == "On")
+		{
+			cmd = thermostat3_sOn;
+		}
+		else if (switchcmd == "Off")
+		{
+			cmd = thermostat3_sOff;
+		}
+		else if (switchcmd == "Up")
+		{
+			cmd = thermostat3_sUp;
+		}
+		else if (switchcmd == "Down")
+		{
+			cmd = thermostat3_sDown;
+		}
+		else if (switchcmd == "Run Up")
+		{
+			cmd = thermostat3_sRunUp;
+		}
+		else if (switchcmd == "Run Down")
+		{
+			cmd = thermostat3_sRunDown;
+		}
+		else if (switchcmd == "Stop")
+		{
+			cmd = thermostat3_sStop;
+		}
+		else
+		{
+			cmd = thermostat3_sOff;
+		}
+		return true;
+	}
+	break;
 	case pTypeThermostat4:
 	{
 		if (switchcmd == "Off")
@@ -3094,94 +3584,246 @@ bool GetLightCommand(
 	}
 	case pTypeFan:
 	{
+		cmd = 1;
 		switch (dSubType)
 		{
-			case sTypeSiemensSF01:
+		case sTypeSiemensSF01:
+		{
+			if (switchcmd == "timer")
 			{
-				if (switchcmd == "timer")
-				{
-					cmd = fan_sTimer;
-				}
-				else if (switchcmd == "+")
-				{
-					cmd = fan_sPlus;
-				}
-				else if (switchcmd == "-")
-				{
-					cmd = fan_sMin;
-				}
-				else if (switchcmd == "learn")
-				{
-					cmd = fan_sLearn;
-				}
-				else if (switchcmd == "confirm")
-				{
-					cmd = fan_sConfirm;
-				}
-				else if (switchcmd == "light")
-				{
-					cmd = fan_sLight;
-				}
+				cmd = fan_sTimer;
 			}
-			break;
-			case sTypeItho:
+			else if (switchcmd == "+")
 			{
-				if ((switchcmd == "1") || (switchcmd == "On") || (switchcmd == "Off"))
-				{
-					cmd = fan_Itho1;
-				}
-				else if (switchcmd == "2")
-				{
-					cmd = fan_Itho2;
-				}
-				else if (switchcmd == "3")
-				{
-					cmd = fan_Itho3;
-				}
-				else if (switchcmd == "timer")
-				{
-					cmd = fan_IthoTimer;
-				}
-				else if (switchcmd == "notathome")
-				{
-					cmd = fan_IthoNotAtHome;
-				}
-				else if (switchcmd == "learn")
-				{
-					cmd = fan_IthoLearn;
-				}
-				else if (switchcmd == "eraseall")
-				{
-					cmd = fan_IthoEraseAll;
-				}
+				cmd = fan_sPlus;
 			}
-			break;
-			case sTypeLucciAir:
+			else if (switchcmd == "-")
 			{
-				if (switchcmd == "hi")
-				{
-					cmd = fan_LucciHi;
-				}
-				else if (switchcmd == "med")
-				{
-					cmd = fan_LucciMed;
-				}
-				else if (switchcmd == "low")
-				{
-					cmd = fan_LucciLow;
-				}
-				else if (switchcmd == "off")
-				{
-					cmd = fan_LucciOff;
-				}
-				else if (switchcmd == "light")
-				{
-					cmd = fan_LucciLight;
-				}
+				cmd = fan_sMin;
 			}
-			break;
+			else if (switchcmd == "learn")
+			{
+				cmd = fan_sLearn;
+			}
+			else if (switchcmd == "confirm")
+			{
+				cmd = fan_sConfirm;
+			}
+			else if ((switchcmd == "light") || (switchcmd == "On"))
+			{
+				cmd = fan_sLight;
+			}
+		}
+		break;
+		case sTypeItho:
+		{
+			if ((switchcmd == "1") || (switchcmd == "On") || (switchcmd == "Off"))
+			{
+				cmd = fan_Itho1;
+			}
+			else if (switchcmd == "2")
+			{
+				cmd = fan_Itho2;
+			}
+			else if (switchcmd == "3")
+			{
+				cmd = fan_Itho3;
+			}
+			else if (switchcmd == "timer")
+			{
+				cmd = fan_IthoTimer;
+			}
+			else if (switchcmd == "notathome")
+			{
+				cmd = fan_IthoNotAtHome;
+			}
+			else if (switchcmd == "learn")
+			{
+				cmd = fan_IthoLearn;
+			}
+			else if (switchcmd == "eraseall")
+			{
+				cmd = fan_IthoEraseAll;
+			}
+		}
+		break;
+		case sTypeLucciAir:
+		case sTypeWestinghouse:
+		{
+			if (switchcmd == "hi")
+			{
+				cmd = fan_LucciHi;
+			}
+			else if ((switchcmd == "med") || (switchcmd == "On"))
+			{
+				cmd = fan_LucciMed;
+			}
+			else if (switchcmd == "low")
+			{
+				cmd = fan_LucciLow;
+			}
+			else if ((switchcmd == "off") || (switchcmd == "Off"))
+			{
+				cmd = fan_LucciOff;
+			}
+			else if (switchcmd == "light")
+			{
+				cmd = fan_LucciLight;
+			}
+		}
+		break;
+		case sTypeLucciAirDC:
+		{
+			if ((switchcmd == "pow") || (switchcmd == "On") || (switchcmd == "Off"))
+				cmd = fan_LucciDCPower;
+			else if (switchcmd == "plus")
+				cmd = fan_LucciDCPlus;
+			else if (switchcmd == "min")
+				cmd = fan_LucciDCMin;
+			else if (switchcmd == "light")
+				cmd = fan_LucciDCLight;
+			else if (switchcmd == "rev")
+				cmd = fan_LucciDCReverse;
+			else if (switchcmd == "nat")
+				cmd = fan_LucciDCNaturalflow;
+		}
+		break;
+		case sTypeCasafan:
+		{
+			if (switchcmd == "hi")
+				cmd = fan_CasafanHi;
+			if ((switchcmd == "med") || (switchcmd == "On"))
+				cmd = fan_CasafanMed;
+			if (switchcmd == "low")
+				cmd = fan_CasafanLow;
+			if ((switchcmd == "off") || (switchcmd == "Off"))
+				cmd = fan_CasafanOff;
+			if (switchcmd == "light")
+				cmd = fan_CasafanLight;
+		}
+		break;
+		case sTypeFT1211R:
+		{
+			if ((switchcmd == "power") || (switchcmd == "On") || (switchcmd == "Off"))
+				cmd = fan_FT1211Rpower;
+			if (switchcmd == "light")
+				cmd = fan_FT1211Rlight;
+			if (switchcmd == "1")
+				cmd = fan_FT1211R1;
+			if (switchcmd == "2")
+				cmd = fan_FT1211R2;
+			if (switchcmd == "3")
+				cmd = fan_FT1211R3;
+			if (switchcmd == "4")
+				cmd = fan_FT1211R4;
+			if (switchcmd == "5")
+				cmd = fan_FT1211R5;
+			if (switchcmd == "f/r")
+				cmd = fan_FT1211Rfr;
+			if (switchcmd == "1h")
+				cmd = fan_FT1211R1H;
+			if (switchcmd == "4h")
+				cmd = fan_FT1211R4H;
+			if (switchcmd == "8h")
+				cmd = fan_FT1211R8H;
+		}
+		break;
+		case sTypeFalmec:
+		{
+			if ((switchcmd == "power") || (switchcmd == "On") || (switchcmd == "Off"))
+				cmd = fan_FalmecPower;
+			if (switchcmd == "speed 1")
+				cmd = fan_FalmecSpeed1;
+			if (switchcmd == "speed 2")
+				cmd = fan_FalmecSpeed2;
+			if (switchcmd == "speed 3")
+				cmd = fan_FalmecSpeed3;
+			if (switchcmd == "speed 4")
+				cmd = fan_FalmecSpeed4;
+			if (switchcmd == "timer 1")
+				cmd = fan_FalmecTimer1;
+			if (switchcmd == "timer 2")
+				cmd = fan_FalmecTimer2;
+			if (switchcmd == "timer 3")
+				cmd = fan_FalmecTimer3;
+			if (switchcmd == "timer 4")
+				cmd = fan_FalmecTimer4;
+			if (switchcmd == "light on")
+				cmd = fan_FalmecLightOn;
+			if (switchcmd == "light off")
+				cmd = fan_FalmecLightOff;
+		}
+		break;
+		case sTypeLucciAirDCII:
+		{
+			if ((switchcmd == "off") || (switchcmd == "Off"))
+				cmd = fan_LucciDCIIOff;
+			if ((switchcmd == "1") || (switchcmd == "On"))
+				cmd = fan_LucciDCII1;
+			if (switchcmd == "2")
+				cmd = fan_LucciDCII2;
+			if (switchcmd == "3")
+				cmd = fan_LucciDCII3;
+			if (switchcmd == "4")
+				cmd = fan_LucciDCII4;
+			if (switchcmd == "5")
+				cmd = fan_LucciDCII5;
+			if (switchcmd == "6")
+				cmd = fan_LucciDCII6;
+			if (switchcmd == "light")
+				cmd = fan_LucciDCIILight;
+			if (switchcmd == "reverse")
+				cmd = fan_LucciDCIIReverse;
+		}
+		break;
+		case sTypeNovy:
+		{
+			if ((switchcmd == "power") || (switchcmd == "On") || (switchcmd == "Off"))
+				cmd = fan_NovyPower;
+			if (switchcmd == "plus")
+				cmd = fan_NovyPlus;
+			if (switchcmd == "min")
+				cmd = fan_NovyMin;
+			if (switchcmd == "light")
+				cmd = fan_NovyLight;
+			if (switchcmd == "learn")
+				cmd = fan_NovyLearn;
+		}
+		break;
 		}
 		return true;
+	}
+	break;
+	case pTypeHunter:
+	{
+		switch (dSubType)
+		{
+		case sTypeHunterfan:
+		{
+			if (switchcmd == "off")
+			{
+				cmd = HunterOff;
+			}
+			else if (switchcmd == "light")
+			{
+				cmd = HunterLight;
+			}
+			else if (switchcmd == "low")
+			{
+				cmd = HunterSpeed1;
+			}
+			else if (switchcmd == "med")
+			{
+				cmd = HunterSpeed2;
+			}
+			else if (switchcmd == "high")
+			{
+				cmd = HunterSpeed3;
+			}
+		}
+		return true;
+		}
+		break;
 	}
 	break;
 	}
@@ -3189,55 +3831,54 @@ bool GetLightCommand(
 	return false;
 }
 
-bool IsLightSwitchOn(const std::string &lstatus)
+bool IsLightSwitchOn(const std::string& lstatus)
 {
 	return (
-		(lstatus=="On")||
-		(lstatus=="Group On")||
-		(lstatus=="All On")||
-		(lstatus=="Chime")||
-		(lstatus=="Motion")||
-		(lstatus=="Alarm")||
-		(lstatus=="Panic")||
-		(lstatus=="Light On")||
-		(lstatus=="Light 2 On")||
-		(lstatus=="Open inline relay")||
-		(lstatus.find("Set Level")!=std::string::npos)||
-		(lstatus.find("Set Group Level")!=std::string::npos)||
+		(lstatus == "On") ||
+		(lstatus == "Group On") ||
+		(lstatus == "All On") ||
+		(lstatus == "Chime") ||
+		(lstatus == "Motion") ||
+		(lstatus == "Alarm") ||
+		(lstatus == "Panic") ||
+		(lstatus == "Light On") ||
+		(lstatus == "Light 2 On") ||
+		(lstatus == "Set Color") ||
+		(lstatus == "Open inline relay") ||
+		(lstatus.find("Set Level") != std::string::npos) ||
+		(lstatus.find("Set Group Level") != std::string::npos) ||
 		(lstatus == "1") || //fan itho
 		(lstatus == "2") ||
 		(lstatus == "3")
 		);
 }
 
-const char *Get_Moisture_Desc(const int moisture)
+const char* Get_Moisture_Desc(const int moisture)
 {
-		if (moisture<10)
-			return "saturated";
-		else if (moisture<20)
-			return "adequately wet";
-		else if (moisture<60)
-			return "irrigation advise";
-		else if (moisture<100)
-			return "irrigation";
-		else
-			return "dangerously dry";
+	if (moisture < 10)
+		return "saturated";
+	if (moisture < 20)
+		return "adequately wet";
+	if (moisture < 60)
+		return "irrigation advise";
+	if (moisture < 100)
+		return "irrigation";
+	return "dangerously dry";
 }
 
-const char *Get_Alert_Desc(const int level)
+const char* Get_Alert_Desc(const int level)
 {
-		if (level == 0)
-			return "undefined";
-		else if (level == 1)
-			return "normal";
-		else if (level == 2)
-			return "warning";
-		else if (level == 3)
-			return "alert";
-		else if (level == 4)
-			return "alarm";
-		else
-			return "unknown level";
+	if (level == 0)
+		return "undefined";
+	if (level == 1)
+		return "normal";
+	if (level == 2)
+		return "warning";
+	if (level == 3)
+		return "alert";
+	if (level == 4)
+		return "alarm";
+	return "unknown level";
 }
 
 bool IsSerialDevice(const _eHardwareTypes htype)
@@ -3264,13 +3905,60 @@ bool IsSerialDevice(const _eHardwareTypes htype)
 	case HTYPE_CurrentCostMeter:
 	case HTYPE_RAVEn:
 	case HTYPE_Comm5Serial:
+	case HTYPE_USBtinGateway:
+	case HTYPE_DenkoviUSBDevices:
 		return true;
 	default:
 		return false;
 	}
 }
 
-void ConvertToGeneralSwitchType(std::string &devid, int &dtype, int &subtype)
+bool IsNetworkDevice(const _eHardwareTypes htype)
+{
+	switch (htype) {
+	case HTYPE_RFXLAN:
+	case HTYPE_P1SmartMeterLAN:
+	case HTYPE_YouLess:
+	case HTYPE_OpenThermGatewayTCP:
+	case HTYPE_LimitlessLights:
+	case HTYPE_SolarEdgeTCP:
+	case HTYPE_WOL:
+	case HTYPE_ECODEVICES:
+	case HTYPE_Mochad:
+	case HTYPE_MySensorsTCP:
+	case HTYPE_MySensorsMQTT:
+	case HTYPE_MQTT:
+	case HTYPE_FRITZBOX:
+	case HTYPE_ETH8020:
+	case HTYPE_RelayNet:
+	case HTYPE_Sterbox:
+	case HTYPE_KMTronicTCP:
+	case HTYPE_KMTronicUDP:
+	case HTYPE_SOLARMAXTCP:
+	case HTYPE_SatelIntegra:
+	case HTYPE_RFLINKTCP:
+	case HTYPE_Comm5TCP:
+	case HTYPE_Comm5SMTCP:
+	case HTYPE_CurrentCostMeterLAN:
+	case HTYPE_NefitEastLAN:
+	case HTYPE_DenkoviHTTPDevices:
+	case HTYPE_DenkoviTCPDevices:
+	case HTYPE_Ec3kMeterTCP:
+	case HTYPE_MultiFun:
+	case HTYPE_ZIBLUETCP:
+	case HTYPE_OnkyoAVTCP:
+	case HTYPE_eHouseTCP:
+	case HTYPE_TTN_MQTT:
+	case HTYPE_S0SmartMeterTCP:
+	case HTYPE_OctoPrint:
+	case HTYPE_TeleinfoMeterTCP:
+		return true;
+	default:
+		return false;
+	}
+}
+
+void ConvertToGeneralSwitchType(std::string& devid, int& dtype, int& subtype)
 {
 	if (dtype == pTypeLighting1) {
 		dtype = pTypeGeneralSwitch;
@@ -3302,7 +3990,7 @@ void ConvertToGeneralSwitchType(std::string &devid, int &dtype, int &subtype)
 		if (subtype == sTypeEMW100) { subtype = sSwitchTypeEMW100; devid = "00" + devid; }
 		if (subtype == sTypeLivolo) { subtype = sSwitchTypeLivolo; devid = "00" + devid; }
 		if (subtype == sTypeLightwaveRF) { subtype = sSwitchTypeLightwaveRF; devid = "00" + devid; }
-		if (subtype == sTypeLivoloAppliance) { subtype = sSwitchTypeLivoloAppliance; devid = "00" + devid; }
+		if (subtype == sTypeLivolo1to10) { subtype = sSwitchTypeLivoloAppliance; devid = "00" + devid; }
 		if (subtype == sTypeEurodomest) subtype = sSwitchTypeEurodomest;
 	}
 	else if (dtype == pTypeLighting6) {
@@ -3313,7 +4001,7 @@ void ConvertToGeneralSwitchType(std::string &devid, int &dtype, int &subtype)
 		dtype = pTypeGeneralSwitch;
 		if (subtype == sTypeByronSX) subtype = sSwitchTypeByronSX;
 		if (subtype == sTypeSelectPlus) subtype = sSwitchTypeSelectPlus;
-		if (subtype == sTypeSelectPlus3) subtype = sSwitchTypeSelectPlus3;
+		if (subtype == sTypeByronBY) subtype = sSwitchTypeSelectPlus3;
 		if (subtype == sTypeByronMP001) subtype = sSwitchTypeByronMP001;
 	}
 	else if (dtype == pTypeSecurity1) {
@@ -3335,12 +4023,12 @@ void ConvertToGeneralSwitchType(std::string &devid, int &dtype, int &subtype)
 		else if (subtype == sTypeBlindsT9) subtype = sSwitchTypeBrel;
 		else if (subtype == sTypeBlindsT10) subtype = sSwitchTypeDooya;
 		std::stringstream s_strid;
-		s_strid << std::hex << strtoul(devid.c_str(), NULL, 16);
+		s_strid << std::hex << strtoul(devid.c_str(), nullptr, 16);
 		unsigned long deviceid = 0;
 		s_strid >> deviceid;
 		deviceid = (unsigned long)((deviceid & 0xffffff00) >> 8);
 		char szTmp[20];
-		sprintf(szTmp, "%lx", deviceid);
+		sprintf(szTmp, "%08lX", deviceid);
 		//_log.Log(LOG_ERROR, "RFLink: deviceid: %x", deviceid);
 		devid = szTmp;
 	}

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <boost/signals2.hpp>
-
 #include "BasePush.h"
 
 class CFibaroPush : public CBasePush
@@ -13,8 +11,7 @@ public:
 	void UpdateActive();
 
 private:
-
-	void OnDeviceReceived(const int m_HwdID, const uint64_t DeviceRowIdx, const std::string &DeviceName, const unsigned char *pRXCommand);
-	void DoFibaroPush();
+  void OnDeviceReceived(int m_HwdID, uint64_t DeviceRowIdx, const std::string &DeviceName, const unsigned char *pRXCommand);
+  void DoFibaroPush(const uint64_t DeviceRowIdx);
 };
 extern CFibaroPush m_fibaropush;

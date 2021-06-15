@@ -6,7 +6,7 @@
 #include "hardwaretypes.h"
 #include "../main/localtime_r.h"
 #include "../httpclient/HTTPClient.h"
-#include "../json/json.h"
+#include "../main/json_helper.h"
 #include "../main/RFXtrx.h"
 #include "../main/mainworker.h"
 
@@ -52,12 +52,7 @@ m_APIKey(APIKey),
 m_Location(Location)
 {
 	m_HwdID=ID;
-	m_stoprequested=false;
 	Init();
-}
-
-CDarkSky::~CDarkSky(void)
-{
 }
 
 void CDarkSky::Init()
@@ -66,21 +61,24 @@ void CDarkSky::Init()
 
 bool CDarkSky::StartHardware()
 {
+	RequestStart();
+
 	Init();
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&CDarkSky::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted=true;
 	sOnConnected(this);
-	return (m_thread!=NULL);
+	return (m_thread != nullptr);
 }
 
 bool CDarkSky::StopHardware()
 {
-	if (m_thread!=NULL)
+	if (m_thread)
 	{
-		assert(m_thread);
-		m_stoprequested = true;
+		RequestStop();
 		m_thread->join();
+		m_thread.reset();
 	}
     m_bIsStarted=false;
     return true;
@@ -88,25 +86,24 @@ bool CDarkSky::StopHardware()
 
 void CDarkSky::Do_Work()
 {
-	_log.Log(LOG_STATUS, "DarkSky: Started...");
+	Log(LOG_STATUS, "Started...");
 
 	int sec_counter = 290;
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat = mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 		if (sec_counter % 300 == 0)
 		{
 			GetMeterDetails();
 		}
 	}
-	_log.Log(LOG_STATUS,"DarkSky: Worker stopped...");
+	Log(LOG_STATUS,"Worker stopped...");
 }
 
-bool CDarkSky::WriteToHardware(const char *pdata, const unsigned char length)
+bool CDarkSky::WriteToHardware(const char* /*pdata*/, const unsigned char /*length*/)
 {
 	return false;
 }
@@ -131,18 +128,15 @@ void CDarkSky::GetMeterDetails()
 	sURL << "https://api.darksky.net/forecast/" << m_APIKey << "/" << szLoc << "?exclude=" << szExclude;
 	try
 	{
-		bool bret;
-		std::string szURL = sURL.str();
-		bret = HTTPClient::GET(szURL, sResult);
-		if (!bret)
+		if (!HTTPClient::GET(sURL.str(), sResult))
 		{
-			_log.Log(LOG_ERROR, "DarkSky: Error getting http data!.");
+			Log(LOG_ERROR, "Error getting http data!.");
 			return;
 		}
 	}
 	catch (...)
 	{
-		_log.Log(LOG_ERROR, "DarkSky: Error getting http data!");
+		Log(LOG_ERROR, "Error getting http data!");
 		return;
 	}
 #ifdef DEBUG_DarkSkyW
@@ -152,16 +146,15 @@ void CDarkSky::GetMeterDetails()
 #endif
 	Json::Value root;
 
-	Json::Reader jReader;
-	bool ret=jReader.parse(sResult,root);
+	bool ret = ParseJSon(sResult, root);
 	if ((!ret) || (!root.isObject()))
 	{
-		_log.Log(LOG_ERROR,"DarkSky: Invalid data received! Check Location, use a City or GPS Coordinates (xx.yyyy,xx.yyyyy)");
+		Log(LOG_ERROR,"Invalid data received! Check Location, use a City or GPS Coordinates (xx.yyyy,xx.yyyyy)");
 		return;
 	}
 	if (root["currently"].empty()==true)
 	{
-		_log.Log(LOG_ERROR,"DarkSky: Invalid data received, or unknown location!");
+		Log(LOG_ERROR,"Invalid data received, or unknown location!");
 		return;
 	}
 	/*
@@ -182,7 +175,7 @@ void CDarkSky::GetMeterDetails()
 
 	if (root["currently"]["humidity"].empty()==false)
 	{
-		humidity=round(root["currently"]["humidity"].asFloat()*100.0f);
+		humidity = round(root["currently"]["humidity"].asFloat() * 100.0F);
 	}
 	if (root["currently"]["pressure"].empty()==false)
 	{
@@ -236,14 +229,12 @@ void CDarkSky::GetMeterDetails()
 
 	//Wind
 	int wind_degrees=-1;
-	float wind_mph=-1;
-	float wind_gust_mph=-1;
 	float windspeed_ms=0;
 	float windgust_ms=0;
 	float wind_temp=temp;
 	float wind_chill=temp;
-	int windgust=1;
-	float windchill=-1;
+	//int windgust=1;
+	//float windchill=-1;
 
 	if (root["currently"]["windBearing"].empty()==false)
 	{
@@ -254,11 +245,10 @@ void CDarkSky::GetMeterDetails()
 		if ((root["currently"]["windSpeed"] != "N/A") && (root["currently"]["windSpeed"] != "--"))
 		{
 			float temp_wind_mph = static_cast<float>(atof(root["currently"]["windSpeed"].asString().c_str()));
-			if (temp_wind_mph!=-9999.00f)
+			if (temp_wind_mph != -9999.00F)
 			{
-				wind_mph=temp_wind_mph;
 				//convert to m/s
-				windspeed_ms=wind_mph*0.44704f;
+				windspeed_ms = temp_wind_mph * 0.44704F;
 			}
 		}
 	}
@@ -267,11 +257,10 @@ void CDarkSky::GetMeterDetails()
 		if ((root["currently"]["windGust"] != "N/A") && (root["currently"]["windGust"] != "--"))
 		{
 			float temp_wind_gust_mph = static_cast<float>(atof(root["currently"]["windGust"].asString().c_str()));
-			if (temp_wind_gust_mph!=-9999.00f)
+			if (temp_wind_gust_mph != -9999.00F)
 			{
-				wind_gust_mph=temp_wind_gust_mph;
 				//convert to m/s
-				windgust_ms=wind_gust_mph*0.44704f;
+				windgust_ms = temp_wind_gust_mph * 0.44704F;
 			}
 		}
 	}
@@ -304,14 +293,14 @@ void CDarkSky::GetMeterDetails()
 
 		tsen.WIND.av_speedh=0;
 		tsen.WIND.av_speedl=0;
-		int sw=round(windspeed_ms*10.0f);
+		int sw = round(windspeed_ms * 10.0F);
 		tsen.WIND.av_speedh=(BYTE)(sw/256);
 		sw-=(tsen.WIND.av_speedh*256);
 		tsen.WIND.av_speedl=(BYTE)(sw);
 
 		tsen.WIND.gusth=0;
 		tsen.WIND.gustl=0;
-		int gw=round(windgust_ms*10.0f);
+		int gw = round(windgust_ms * 10.0F);
 		tsen.WIND.gusth=(BYTE)(gw/256);
 		gw-=(tsen.WIND.gusth*256);
 		tsen.WIND.gustl=(BYTE)(gw);
@@ -323,18 +312,18 @@ void CDarkSky::GetMeterDetails()
 		tsen.WIND.temperaturel=0;
 
 		tsen.WIND.tempsign=(wind_temp>=0)?0:1;
-		int at10=round(std::abs(wind_temp*10.0f));
+		int at10 = round(std::abs(wind_temp * 10.0F));
 		tsen.WIND.temperatureh=(BYTE)(at10/256);
 		at10-=(tsen.WIND.temperatureh*256);
 		tsen.WIND.temperaturel=(BYTE)(at10);
 
-		tsen.WIND.chillsign=(wind_temp>=0)?0:1;
-		at10=round(std::abs(wind_chill*10.0f));
+		tsen.WIND.chillsign=(wind_chill>=0)?0:1;
+		at10 = round(std::abs(wind_chill * 10.0F));
 		tsen.WIND.chillh=(BYTE)(at10/256);
 		at10-=(tsen.WIND.chillh*256);
 		tsen.WIND.chilll=(BYTE)(at10);
 
-		sDecodeRXMessage(this, (const unsigned char *)&tsen.WIND, NULL, 255);
+		sDecodeRXMessage(this, (const unsigned char *)&tsen.WIND, nullptr, 255, nullptr);
 	}
 
 	//UV
@@ -355,29 +344,10 @@ void CDarkSky::GetMeterDetails()
 	{
 		if ((root["currently"]["precipIntensity"] != "N/A") && (root["currently"]["precipIntensity"] != "--"))
 		{
-			float RainCount = static_cast<float>(atof(root["currently"]["precipIntensity"].asString().c_str()))*25.4f; //inches to mm
-			if ((RainCount!=-9999.00f)&&(RainCount>=0.00f))
+			float rainrateph = static_cast<float>(atof(root["currently"]["precipIntensity"].asString().c_str())) * 25.4F; // inches to mm
+			if ((rainrateph != -9999.00F) && (rainrateph >= 0.00F))
 			{
-				RBUF tsen;
-				memset(&tsen,0,sizeof(RBUF));
-				tsen.RAIN.packetlength=sizeof(tsen.RAIN)-1;
-				tsen.RAIN.packettype=pTypeRAIN;
-				tsen.RAIN.subtype=sTypeRAINWU;
-				tsen.RAIN.battery_level=9;
-				tsen.RAIN.rssi=12;
-				tsen.RAIN.id1=0;
-				tsen.RAIN.id2=1;
-
-				tsen.RAIN.rainrateh=0;
-				tsen.RAIN.rainratel=0;
-
-				int tr10=int((float(RainCount)*10.0f));
-				tsen.RAIN.raintotal1=0;
-				tsen.RAIN.raintotal2=(BYTE)(tr10/256);
-				tr10-=(tsen.RAIN.raintotal2*256);
-				tsen.RAIN.raintotal3=(BYTE)(tr10);
-
-				sDecodeRXMessage(this, (const unsigned char *)&tsen.RAIN, NULL, 255);
+				SendRainRateSensor(1, 255, rainrateph, "Rain");
 			}
 		}
 	}
@@ -387,13 +357,13 @@ void CDarkSky::GetMeterDetails()
 	{
 		if ((root["currently"]["visibility"] != "N/A") && (root["currently"]["visibility"] != "--"))
 		{
-			float visibility = static_cast<float>(atof(root["currently"]["visibility"].asString().c_str()))*1.60934f; //miles to km
+			float visibility = static_cast<float>(atof(root["currently"]["visibility"].asString().c_str())) * 1.60934F; // miles to km
 			if (visibility>=0)
 			{
 				_tGeneralDevice gdevice;
 				gdevice.subtype=sTypeVisibility;
 				gdevice.floatval1=visibility;
-				sDecodeRXMessage(this, (const unsigned char *)&gdevice, NULL, 255);
+				sDecodeRXMessage(this, (const unsigned char *)&gdevice, nullptr, 255, nullptr);
 			}
 		}
 	}
@@ -402,13 +372,22 @@ void CDarkSky::GetMeterDetails()
 	{
 		if ((root["currently"]["ozone"] != "N/A") && (root["currently"]["ozone"] != "--"))
 		{
-			float radiation = static_cast<float>(atof(root["currently"]["ozone"].asString().c_str()));	//this is in dobson units, need to convert to Watt/m2? (2.69×(10^20) ?
-			if (radiation>=0.0f)
+			float radiation = static_cast<float>(atof(root["currently"]["ozone"].asString().c_str()));
+			if (radiation >= 0.0F)
 			{
-				_tGeneralDevice gdevice;
-				gdevice.subtype=sTypeSolarRadiation;
-				gdevice.floatval1=radiation;
-				sDecodeRXMessage(this, (const unsigned char *)&gdevice, NULL, 255);
+				SendCustomSensor(1, 0, 255, radiation, "Ozone Sensor", "DU"); //(dobson units)
+			}
+		}
+	}
+	//Cloud Cover
+	if (root["currently"]["cloudCover"].empty() == false)
+	{
+		if ((root["currently"]["cloudCover"] != "N/A") && (root["currently"]["cloudCover"] != "--"))
+		{
+			float cloudcover = static_cast<float>(atof(root["currently"]["cloudCover"].asString().c_str()));
+			if (cloudcover >= 0.0F)
+			{
+				SendPercentageSensor(1, 0, 255, cloudcover * 100.0F, "Cloud Cover");
 			}
 		}
 	}

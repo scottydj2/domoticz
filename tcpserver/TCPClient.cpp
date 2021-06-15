@@ -3,19 +3,21 @@
 #include "TCPServer.h"
 #include "../main/Helper.h"
 #include "../main/Logger.h"
+#include "../webserver/proxyclient.h"
+
 namespace tcp {
 namespace server {
 
 CTCPClientBase::CTCPClientBase(CTCPServerIntBase *pManager)
 	: pConnectionManager(pManager)
 {
-	socket_ = NULL;
+	socket_ = nullptr;
 	m_bIsLoggedIn = false;
 }
 
-CTCPClientBase::~CTCPClientBase(void)
+CTCPClientBase::~CTCPClientBase()
 {
-	if (socket_) delete socket_;
+	delete socket_;
 }
 
 CTCPClient::CTCPClient(boost::asio::io_service& ios, CTCPServerIntBase *pManager)
@@ -24,17 +26,9 @@ CTCPClient::CTCPClient(boost::asio::io_service& ios, CTCPServerIntBase *pManager
 	socket_ = new boost::asio::ip::tcp::socket(ios);
 }
 
-
-CTCPClient::~CTCPClient(void)
-{
-}
-
 void CTCPClient::start()
 {
-	socket_->async_read_some(boost::asio::buffer(buffer_),
-		boost::bind(&CTCPClient::handleRead, shared_from_this(),
-		boost::asio::placeholders::error,
-		boost::asio::placeholders::bytes_transferred));
+	socket_->async_read_some(boost::asio::buffer(buffer_), [self = shared_from_this()](auto &&err, auto &&bytes) { self->handleRead(err, bytes); });
 }
 
 void CTCPClient::stop()
@@ -45,6 +39,7 @@ void CTCPClient::stop()
 void CTCPClient::handleRead(const boost::system::error_code& e,
 	std::size_t bytes_transferred)
 {
+	auto self = shared_from_this();
 	if (!e)
 	{
 		//do something with the data
@@ -60,11 +55,12 @@ void CTCPClient::handleRead(const boost::system::error_code& e,
 				StringSplit(recstr, ";", strarray);
 				if (strarray.size()==3)
 				{
-					m_bIsLoggedIn=pConnectionManager->HandleAuthentication(shared_from_this(), strarray[1] ,strarray[2]);
+					m_bIsLoggedIn = pConnectionManager->HandleAuthentication(self, strarray[1], strarray[2]);
 					if (!m_bIsLoggedIn)
 					{
 						//Wrong username/password
-						pConnectionManager->stopClient(shared_from_this());
+						boost::asio::async_write(*socket_, boost::asio::buffer("NOAUTH", 6), [self](auto &&err, auto) { self->handleWrite(err); });
+						pConnectionManager->stopClient(self);
 						return;
 					}
 					m_username=strarray[1];
@@ -77,14 +73,11 @@ void CTCPClient::handleRead(const boost::system::error_code& e,
 		}
 
 		//ready for next read
-		socket_->async_read_some(boost::asio::buffer(buffer_),
-			boost::bind(&CTCPClient::handleRead, shared_from_this(),
-			boost::asio::placeholders::error,
-			boost::asio::placeholders::bytes_transferred));
+		socket_->async_read_some(boost::asio::buffer(buffer_), [self](auto &&err, auto bytes) { self->handleRead(err, bytes); });
 	}
 	else if (e != boost::asio::error::operation_aborted)
 	{
-		pConnectionManager->stopClient(shared_from_this());
+		pConnectionManager->stopClient(self);
 	}
 }
 
@@ -92,9 +85,7 @@ void CTCPClient::write(const char *pData, size_t Length)
 {
 	if (!m_bIsLoggedIn)
 		return;
-	boost::asio::async_write(*socket_, boost::asio::buffer(pData, Length),
-		boost::bind(&CTCPClient::handleWrite, shared_from_this(),
-		boost::asio::placeholders::error));
+	boost::asio::async_write(*socket_, boost::asio::buffer(pData, Length), [self = shared_from_this()](auto &&err, auto) { self->handleWrite(err); });
 }
 
 void CTCPClient::handleWrite(const boost::system::error_code& error)
@@ -107,15 +98,12 @@ void CTCPClient::handleWrite(const boost::system::error_code& error)
 
 #ifndef NOCLOUD
 /* shared server via proxy client class */
-CSharedClient::CSharedClient(CTCPServerIntBase *pManager, boost::shared_ptr<http::server::CProxyClient> proxy, const std::string &token, const std::string &username) : CTCPClientBase(pManager)
+CSharedClient::CSharedClient(CTCPServerIntBase *pManager, http::server::CProxyClient *proxy, const std::string &token, const std::string &username) :
+	CTCPClientBase(pManager),
+	m_token(token)
 {
-	m_pProxyClient = proxy;
 	m_username = username;
-	_token = token;
-}
-
-CSharedClient::~CSharedClient()
-{
+	m_pProxyClient = proxy;
 }
 
 void CSharedClient::start()
@@ -141,12 +129,12 @@ void CSharedClient::write(const char *pData, size_t Length)
 	if (!m_bIsLoggedIn)
 		return;
 	// RK, todo: m_pProxyClient is not valid after a reconnect
-	m_pProxyClient->WriteSlaveData(_token, pData, Length);
+	m_pProxyClient->WriteSlaveData(m_token, pData, Length);
 }
 
 bool CSharedClient::CompareToken(const std::string &token)
 {
-	return (token == _token);
+	return (token == m_token);
 }
 #endif
 

@@ -5,17 +5,23 @@
 namespace Json
 {
 	class Value;
-};
+} // namespace Json
 
 class CHttpPoller : public CDomoticzHardwareBase
 {
-public:
-	CHttpPoller(const int ID, const std::string& username, const std::string& password, const std::string& url, const std::string& extradata, const unsigned short refresh);
-	~CHttpPoller(void);
+      public:
+	CHttpPoller(int ID, const std::string &username, const std::string &password, const std::string &url, const std::string &extradata, unsigned short refresh);
+	~CHttpPoller() override = default;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
 
-	bool WriteToHardware(const char *pdata, const unsigned char length);
+      private:
+	void Init();
+	bool StartHardware() override;
+	bool StopHardware() override;
+	void Do_Work();
+	void GetScript();
 
-private:
+      private:
 	std::string m_username;
 	std::string m_password;
 	std::string m_url;
@@ -25,14 +31,5 @@ private:
 	std::string m_postdata;
 	unsigned short m_method;
 	unsigned short m_refresh;
-
-	volatile bool m_stoprequested;
-	boost::shared_ptr<boost::thread> m_thread;
-
-	void Init();
-	bool StartHardware();
-	bool StopHardware();
-	void Do_Work();
-	void GetScript();
+	std::shared_ptr<std::thread> m_thread;
 };
-

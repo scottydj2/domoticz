@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "BasePush.h"
 #include "../hardware/hardwaretypes.h"
-#include "../json/json.h"
+#include <json/json.h>
 #include "../main/Helper.h"
 #include "../main/Logger.h"
 #include "../main/RFXtrx.h"
@@ -18,12 +18,11 @@ typedef struct _STR_TABLE_ID1_ID2 {
 	const char   *str1;
 } STR_TABLE_ID1_ID2;
 
-extern const char *findTableID1ID2(const _STR_TABLE_ID1_ID2 *t, const unsigned long id1, const unsigned long id2);
+extern const char *findTableID1ID2(const _STR_TABLE_ID1_ID2 *t, unsigned long id1, unsigned long id2);
 
 const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned char sType)
 {
-	static const STR_TABLE_ID1_ID2	Table[] =
-	{
+	static const STR_TABLE_ID1_ID2 Table[] = {
 		{ pTypeTEMP, sTypeTEMP1, "Temperature" },
 		{ pTypeTEMP, sTypeTEMP2, "Temperature" },
 		{ pTypeTEMP, sTypeTEMP3, "Temperature" },
@@ -56,7 +55,6 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeTEMP_HUM, sTypeTH14, "Temperature,Humidity,Humidity Status" },
 		{ pTypeTEMP_HUM, sTypeTH_LC_TC, "Temperature,Humidity,Humidity Status" },
 
-
 		{ pTypeTEMP_HUM_BARO, sTypeTHB1, "Temperature,Humidity,Humidity Status,Barometer,Forecast" },
 		{ pTypeTEMP_HUM_BARO, sTypeTHB2, "Temperature,Humidity,Humidity Status,Barometer,Forecast" },
 		{ pTypeTEMP_HUM_BARO, sTypeTHBFloat, "Temperature,Humidity,Humidity Status,Barometer,Forecast" },
@@ -67,7 +65,11 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeRAIN, sTypeRAIN4, "Rain rate,Total rain" },
 		{ pTypeRAIN, sTypeRAIN5, "Rain rate,Total rain" },
 		{ pTypeRAIN, sTypeRAIN6, "Rain rate,Total rain" },
+		{ pTypeRAIN, sTypeRAIN7, "Rain rate,Total rain" },
+		{ pTypeRAIN, sTypeRAIN8, "Rain rate,Total rain" },
+		{ pTypeRAIN, sTypeRAIN9, "Rain rate,Total rain" },
 		{ pTypeRAIN, sTypeRAINWU, "Rain rate,Total rain" },
+		{ pTypeRAIN, sTypeRAINByRate, "Rain rate,Total rain" },
 
 		{ pTypeWIND, sTypeWIND1, "Direction,Direction string,Speed,Gust,Temperature,Chill" },
 		{ pTypeWIND, sTypeWIND2, "Direction,Direction string,Speed,Gust,Temperature,Chill" },
@@ -76,7 +78,8 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeWIND, sTypeWIND5, "Direction,Direction string,Speed,Gust,Temperature,Chill" },
 		{ pTypeWIND, sTypeWIND6, "Direction,Direction string,Speed,Gust,Temperature,Chill" },
 		{ pTypeWIND, sTypeWIND7, "Direction,Direction string,Speed,Gust,Temperature,Chill" },
-		{ pTypeWIND, sTypeWINDNoTemp, "Direction,Direction string,Speed,Gust,Temperature,Chill" },
+		{ pTypeWIND, sTypeWINDNoTemp, "Direction,Direction string,Speed,Gust,Chill" },
+		{ pTypeWIND, sTypeWINDNoTempNoChill, "Direction,Direction string,Speed,Gust" },
 
 		{ pTypeUV, sTypeUV1, "UV,Temperature" },
 		{ pTypeUV, sTypeUV2, "UV,Temperature" },
@@ -94,55 +97,61 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeLighting1, sTypeEnergenie5, "Status" },
 		{ pTypeLighting1, sTypeGDR2, "Status" },
 		{ pTypeLighting1, sTypeHQ, "Status" },
+		{ pTypeLighting1, sTypeOase, "Status" },
 
-		{ pTypeLighting2, sTypeAC, "Status" },
-		{ pTypeLighting2, sTypeHEU, "Status" },
-		{ pTypeLighting2, sTypeANSLUT, "Status" },
-		{ pTypeLighting2, sTypeKambrook, "Status" },
+		{ pTypeLighting2, sTypeAC, "Status,Level" },
+		{ pTypeLighting2, sTypeHEU, "Status,Level" },
+		{ pTypeLighting2, sTypeANSLUT, "Status,Level" },
+		{ pTypeLighting2, sTypeKambrook, "Status,Level" },
 
 		{ pTypeLighting3, sTypeKoppla, "Status" },
 
 		{ pTypeLighting4, sTypePT2262, "Status" },
 
-		{ pTypeLighting5, sTypeLightwaveRF, "Status" },
-		{ pTypeLighting5, sTypeEMW100, "Status" },
-		{ pTypeLighting5, sTypeBBSB, "Status" },
-		{ pTypeLighting5, sTypeMDREMOTE, "Status" },
-		{ pTypeLighting5, sTypeRSL, "Status" },
-		{ pTypeLighting5, sTypeLivolo, "Status" },
-		{ pTypeLighting5, sTypeTRC02, "Status" },
-		{ pTypeLighting5, sTypeTRC02_2, "Status" },
-		{ pTypeLighting5, sTypeAoke, "Status" },
-		{ pTypeLighting5, sTypeEurodomest, "Status" },
-		{ pTypeLighting5, sTypeLivoloAppliance, "Status" },
-		{ pTypeLighting5, sTypeRGB432W, "Status" },
-		{ pTypeLighting5, sTypeMDREMOTE107, "Status" },
-		{ pTypeLighting5, sTypeLegrandCAD, "Status" },
-		{ pTypeLighting5, sTypeAvantek, "Status" },
-		{ pTypeLighting5, sTypeIT, "Status" },
-		{ pTypeLighting5, sTypeMDREMOTE108, "Status" },
-		{ pTypeLighting5, sTypeKangtai, "Status" },
+		{ pTypeLighting5, sTypeLightwaveRF, "Status,Level" },
+		{ pTypeLighting5, sTypeEMW100, "Status,Level" },
+		{ pTypeLighting5, sTypeBBSB, "Status,Level" },
+		{ pTypeLighting5, sTypeMDREMOTE, "Status,Level" },
+		{ pTypeLighting5, sTypeRSL, "Status,Level" },
+		{ pTypeLighting5, sTypeLivolo, "Status,Level" },
+		{ pTypeLighting5, sTypeTRC02, "Status,Level" },
+		{ pTypeLighting5, sTypeTRC02_2, "Status,Level" },
+		{ pTypeLighting5, sTypeAoke, "Status,Level" },
+		{ pTypeLighting5, sTypeEurodomest, "Status,Level" },
+		{ pTypeLighting5, sTypeLivolo1to10, "Status,Level" },
+		{ pTypeLighting5, sTypeRGB432W, "Status,Level" },
+		{ pTypeLighting5, sTypeMDREMOTE107, "Status,Level" },
+		{ pTypeLighting5, sTypeLegrandCAD, "Status,Level" },
+		{ pTypeLighting5, sTypeAvantek, "Status,Level" },
+		{ pTypeLighting5, sTypeIT, "Status,Level" },
+		{ pTypeLighting5, sTypeMDREMOTE108, "Status,Level" },
+		{ pTypeLighting5, sTypeKangtai, "Status,Level" },
 
 		{ pTypeLighting6, sTypeBlyss, "Status" },
 
+		{ pTypeFS20, sTypeFS20, "Status" },
+		{ pTypeFS20, sTypeFHT8V, "Status" },
+		{ pTypeFS20, sTypeFHT80, "Status" },
+
 		{ pTypeHomeConfort, sTypeHomeConfortTEL010, "Status" },
 
-		{ pTypeCurtain, sTypeHarrison, "Status" },
+		{ pTypeCurtain, sTypeHarrison, "Status,Level" },
 
-		{ pTypeBlinds, sTypeBlindsT0, "Status" },
-		{ pTypeBlinds, sTypeBlindsT1, "Status" },
-		{ pTypeBlinds, sTypeBlindsT2, "Status" },
-		{ pTypeBlinds, sTypeBlindsT3, "Status" },
-		{ pTypeBlinds, sTypeBlindsT4, "Status" },
-		{ pTypeBlinds, sTypeBlindsT5, "Status" },
-		{ pTypeBlinds, sTypeBlindsT6, "Status" },
-		{ pTypeBlinds, sTypeBlindsT7, "Status" },
-		{ pTypeBlinds, sTypeBlindsT8, "Status" },
-		{ pTypeBlinds, sTypeBlindsT9, "Status" },
-		{ pTypeBlinds, sTypeBlindsT10, "Status" },
-		{ pTypeBlinds, sTypeBlindsT11, "Status" },
-		{ pTypeBlinds, sTypeBlindsT12, "Status" },
-		{ pTypeBlinds, sTypeBlindsT13, "Status" },
+		{ pTypeBlinds, sTypeBlindsT0, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT1, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT2, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT3, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT4, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT5, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT6, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT7, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT8, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT9, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT10, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT11, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT12, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT13, "Status,Level" },
+		{ pTypeBlinds, sTypeBlindsT14, "Status,Level" },
 
 		{ pTypeSecurity1, sTypeSecX10, "Status" },
 		{ pTypeSecurity1, sTypeSecX10M, "Status" },
@@ -154,11 +163,16 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeSecurity1, sTypePowercodeAux, "Status" },
 		{ pTypeSecurity1, sTypeMeiantech, "Status" },
 		{ pTypeSecurity1, sTypeSA30, "Status" },
+		{ pTypeSecurity1, sTypeRM174RF, "Status" },
 		{ pTypeSecurity1, sTypeDomoticzSecurity, "Status" },
 
 		{ pTypeSecurity2, sTypeSec2Classic, "Status" },
 
 		{ pTypeCamera, sTypeNinja, "Not implemented" },
+
+		{ pTypeFS20, sTypeFS20, "FS20" },
+		{ pTypeFS20, sTypeFHT8V, "FHT8V" },
+		{ pTypeFS20, sTypeFHT80, "FHT80" },
 
 		{ pTypeRemote, sTypeATI, "Status" },
 		{ pTypeRemote, sTypeATIplus, "Status" },
@@ -235,6 +249,7 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeGeneral, sTypeTextStatus, "Text" },
 		{ pTypeGeneral, sTypeZWaveThermostatMode, "Thermostat Mode" },
 		{ pTypeGeneral, sTypeZWaveThermostatFanMode, "Thermostat Fan Mode" },
+		{ pTypeGeneral, sTypeZWaveThermostatOperatingState, "Thermostat Operating State" },
 		{ pTypeGeneral, sTypeAlert, "Alert" },
 		{ pTypeGeneral, sTypeSoundLevel, "Sound Level" },
 		{ pTypeGeneral, sTypeUV, "UV,Temperature" },
@@ -244,6 +259,7 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeGeneral, sTypeWaterflow, "Percentage" },
 		{ pTypeGeneral, sTypeCustom, "Percentage" },
 		{ pTypeGeneral, sTypeZWaveAlarm, "Status" },
+		{ pTypeGeneral, sTypeManagedCounter, "Counter" },
 
 		{ pTypeThermostat, sTypeThermSetpoint, "Temperature" },
 		{ pTypeThermostat, sTypeThermTemperature, "Temperature" },
@@ -251,8 +267,9 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeChime, sTypeByronSX, "Status" },
 		{ pTypeChime, sTypeByronMP001, "Status" },
 		{ pTypeChime, sTypeSelectPlus, "Status" },
-		{ pTypeChime, sTypeSelectPlus3, "Status" },
+		{ pTypeChime, sTypeByronBY, "Status" },
 		{ pTypeChime, sTypeEnvivo, "Status" },
+		{ pTypeChime, sTypeAlfawise, "Status" },
 
 		{ pTypeTEMP_RAIN, sTypeTR1, "Temperature,Total rain" },
 
@@ -260,10 +277,13 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 
 		{ pTypePOWER, sTypeELEC5, "Instant,Usage" },
 
-		{ pTypeLimitlessLights, sTypeLimitlessRGBW, "Status" },
-		{ pTypeLimitlessLights, sTypeLimitlessRGB, "Status" },
-		{ pTypeLimitlessLights, sTypeLimitlessWhite, "Status" },
-		{ pTypeLimitlessLights, sTypeLimitlessRGBWW, "Status" },
+		{ pTypeColorSwitch, sTypeColor_RGB_W, "Status,Level" },
+		{ pTypeColorSwitch, sTypeColor_RGB, "Status,Level" },
+		{ pTypeColorSwitch, sTypeColor_White, "Status,Level" },
+		{ pTypeColorSwitch, sTypeColor_RGB_CW_WW, "Status,Level" },
+		{ pTypeColorSwitch, sTypeColor_RGB_W_Z, "Status,Level" },
+		{ pTypeColorSwitch, sTypeColor_RGB_CW_WW_Z, "Status,Level" },
+		{ pTypeColorSwitch, sTypeColor_CW_WW, "Status,Level" },
 
 		{ pTypeRFY, sTypeRFY, "Status" },
 		{ pTypeRFY, sTypeRFY2, "Status" },
@@ -272,85 +292,83 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 		{ pTypeEvohome, sTypeEvohome, "Status" },
 		{ pTypeEvohomeZone, sTypeEvohomeZone, "Temperature,Set point,Status" },
 		{ pTypeEvohomeWater, sTypeEvohomeWater, "Temperature,State,Status" },
-		{ pTypeEvohomeRelay, sTypeEvohomeRelay, "Status" },
+		{ pTypeEvohomeRelay, sTypeEvohomeRelay, "Status,Value" },
 
-		{ pTypeGeneralSwitch, sSwitchTypeX10, "Status" },
+		{ pTypeGeneralSwitch, sSwitchTypeX10, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeARC, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeAB400D, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeWaveman, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEMW200, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeIMPULS, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeRisingSun, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypePhilips, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEnergenie, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEnergenie5, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeGDR2, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeAC, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeHEU, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeANSLUT, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeKambrook, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeKoppla, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypePT2262, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeLightwaveRF, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEMW100, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeBBSB, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeMDREMOTE, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeRSL, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeLivolo, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeTRC02, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeAoke, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeTRC02_2, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEurodomest, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeLivoloAppliance, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeBlyss, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeByronSX, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeByronMP001, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeSelectPlus, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeSelectPlus3, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeFA20, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeChuango, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypePlieger, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeSilvercrest, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeMertik, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeHomeConfort, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypePowerfix, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeTriState, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeDeltronic, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeFA500, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeHT12E, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEV1527, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeElmes, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeAster, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeSartano, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeEurope, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeAvidsen, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeBofu, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeBrel, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeRTS, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeElroDB, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeDooya, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeUnitec, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeSelector, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeMaclean, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeR546, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeDiya, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeX10secu, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeAtlantic, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeSilvercrestDB, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeMedionDB, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeVMC, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeKeeloq, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchCustomSwitch, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchGeneralSwitch, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeKoch, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeKingpin, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeFunkbus, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeNice, "Status,Level" },
+		{ pTypeGeneralSwitch, sSwitchTypeForest, "Status,Level" },
 
-		{ pTypeGeneralSwitch, sSwitchTypeX10, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeARC, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeAB400D, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeWaveman, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEMW200, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeIMPULS, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeRisingSun, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypePhilips, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEnergenie, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEnergenie5, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeGDR2, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeAC, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeHEU, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeANSLUT, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeKambrook, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeKoppla, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypePT2262, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeLightwaveRF, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEMW100, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeBBSB, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeMDREMOTE, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeRSL, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeLivolo, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeTRC02, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeAoke, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeTRC02_2, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEurodomest, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeLivoloAppliance, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeBlyss, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeByronSX, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeByronMP001, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeSelectPlus, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeSelectPlus3, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeFA20, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeChuango, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypePlieger, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeSilvercrest, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeMertik, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeHomeConfort, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypePowerfix, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeTriState, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeDeltronic, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeFA500, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeHT12E, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEV1527, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeElmes, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeAster, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeSartano, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeEurope, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeAvidsen, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeBofu, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeBrel, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeRTS, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeElroDB, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeDooya, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeUnitec, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeSelector, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeMaclean, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeR546, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeDiya, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeX10secu, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeAtlantic, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeSilvercrestDB, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeMedionDB, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeVMC, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeKeeloq, "Status" },
-		{ pTypeGeneralSwitch, sSwitchCustomSwitch, "Status" },
-		{ pTypeGeneralSwitch, sSwitchGeneralSwitch, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeKoch, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeKingpin, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeFunkbus, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeNice, "Status" },
-		{ pTypeGeneralSwitch, sSwitchTypeForest, "Status" },
-
-		{ 0,0,NULL }
+		{ 0, 0, nullptr },
 	};
 	return findTableID1ID2(Table, dType, sType);
 }
@@ -358,7 +376,6 @@ const char *RFX_Type_SubType_Values(const unsigned char dType, const unsigned ch
 CBasePush::CBasePush()
 {
 	m_bLinkActive = false;
-	m_DeviceRowIdx = -1;
 }
 
 // STATIC
@@ -417,286 +434,301 @@ void CBasePush::replaceAll(std::string& context, const std::string& from, const 
 	}
 }
 
-std::vector<std::string> CBasePush::DropdownOptions(const uint64_t DeviceRowIdxIn)
+std::vector<std::string> CBasePush::DropdownOptions(const int devType, const int devSubType)
 {
 	std::vector<std::string> dropdownOptions;
-
-	std::vector<std::vector<std::string> > result;
-	result=m_sql.safe_query("SELECT Type, SubType FROM DeviceStatus WHERE (ID== %" PRIu64 ")", DeviceRowIdxIn);
-	if (result.size()>0)
-	{
-		int dType=atoi(result[0][0].c_str());
-		int dSubType=atoi(result[0][1].c_str());
-
-		std::string sOptions = RFX_Type_SubType_Values(dType,dSubType);
-		std::vector<std::string> tmpV; 
-		StringSplit(sOptions, ",", tmpV); 
-		for (int i = 0; i < (int) tmpV.size(); ++i) { 
-			dropdownOptions.push_back(tmpV[i]); 
-		}
-	}
-   	else 
-	{
-		dropdownOptions.push_back("Not implemented");
-	}
+	std::string sOptions = RFX_Type_SubType_Values(devType, devSubType);
+	std::vector<std::string> tmpV;
+	StringSplit(sOptions, ",", tmpV);
+	std::copy(tmpV.begin(), tmpV.end(), std::back_inserter(dropdownOptions));
 	return dropdownOptions;
 }
 
-std::string CBasePush::DropdownOptionsValue(const uint64_t DeviceRowIdxIn, const int pos)
-{	
-	std::string wording = "???";
-	int getpos = pos-1; // 0 pos is always nvalue/status, 1 and higher goes to svalues
-	std::vector<std::vector<std::string> > result;
-	
-	result=m_sql.safe_query("SELECT Type, SubType FROM DeviceStatus WHERE (ID== %" PRIu64 ")", DeviceRowIdxIn);
-	if (result.size()>0)
-	{
-		int dType=atoi(result[0][0].c_str());
-		int dSubType=atoi(result[0][1].c_str());
-
-		std::string sOptions = RFX_Type_SubType_Values(dType,dSubType);
-		std::vector<std::string> tmpV; 
-		StringSplit(sOptions, ",", tmpV);
-		if (tmpV.size() > 1)
-		{
-			if ( (int) tmpV.size() >= pos && getpos >= 0) {
-				wording = tmpV[getpos];
-			}
-		}
-		else if (tmpV.size() == 1)
-		{
-			wording = sOptions;
-		}
-	}
-	return wording;
+std::string CBasePush::DropdownOptionsValue(const int devType, const int devSubType, const int pos)
+{
+	std::vector<std::string> tmpV;
+	StringSplit(RFX_Type_SubType_Values(devType, devSubType), ",", tmpV);
+	if (pos > 0 && pos <= (int)tmpV.size())
+		return tmpV[pos - 1];
+	return "???";
 }
 
-std::string CBasePush::ProcessSendValue(const std::string &rawsendValue, const int delpos, const int nValue, const int includeUnit, const int metertypein)
+std::string CBasePush::ProcessSendValue(const uint64_t DeviceRowIdx, const std::string &rawsendValue, const int delpos, const int nValue, const int includeUnit, const int devType, const int devSubType,
+					const int metertypein)
 {
-	std::string vType = DropdownOptionsValue(m_DeviceRowIdx,delpos);
-	unsigned char tempsign=m_sql.m_tempsign[0];
-	_eMeterType metertype = (_eMeterType) metertypein;
-	char szData[100]= "";
+	char szData[100];
+	szData[0] = 0;
+	try
+	{
+		std::string vType = DropdownOptionsValue(devType, devSubType, delpos);
+		if (vType  == "???")
+			return ""; // unhandled type
 
-	std::string unit = getUnit(delpos, metertypein);
+		unsigned char tempsign = m_sql.m_tempsign[0];
+		_eMeterType metertype = (_eMeterType)metertypein;
+		
+		if ((vType == "Temperature") || (vType == "Temperature 1") || (vType == "Temperature 2") || (vType == "Set point"))
+		{
+			sprintf(szData, "%g", ConvertTemperature(std::stod(rawsendValue), tempsign));
+		}
+		else if (vType == "Concentration")
+		{
+			sprintf(szData, "%d", nValue);
+		}
+		else if (vType == "Humidity")
+		{
+			if (devType == pTypeHUM)
+				sprintf(szData, "%d", nValue);
+			else
+				strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Humidity Status")
+		{
+			sprintf(szData, "%s", RFX_Humidity_Status_Desc(std::stoi(rawsendValue)));
+		}
+		else if (vType == "Barometer")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Forecast")
+		{
+			int forecast = std::stoi(rawsendValue);
+			if (forecast != baroForecastNoInfo)
+			{
+				sprintf(szData, "%s", RFX_Forecast_Desc(forecast));
+			}
+			else {
+				sprintf(szData, "%d", forecast);
+			}
+		}
+		else if (vType == "Altitude")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "UV")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Direction")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Direction string")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Speed")
+		{
+			int intSpeed = std::stoi(rawsendValue);
+			if (m_sql.m_windunit != WINDUNIT_Beaufort)
+			{
+				sprintf(szData, "%g", float(intSpeed) * m_sql.m_windscale);
+			}
+			else
+			{
+				float speedms = float(intSpeed) * 0.1F;
+				sprintf(szData, "%d", MStoBeaufort(speedms));
+			}
+		}
+		else if (vType == "Gust")
+		{
+			int intGust = std::stoi(rawsendValue);
+			if (m_sql.m_windunit != WINDUNIT_Beaufort)
+			{
+				sprintf(szData, "%g", float(intGust) * m_sql.m_windscale);
+			}
+			else
+			{
+				float gustms = float(intGust) * 0.1F;
+				sprintf(szData, "%d", MStoBeaufort(gustms));
+			}
+		}
+		else if (vType == "Chill")
+		{
+			sprintf(szData, "%g", ConvertTemperature(std::stof(rawsendValue), tempsign));
+		}
+		else if (vType == "Rain rate")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Total rain")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Counter" || vType == "Counter Incremental" )
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Mode")
+		{
+			sprintf(szData, "Not supported yet");
+		}
+		else if (vType == "Sound Level")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Distance")
+		{
+			float vis = std::stof(rawsendValue);
+			if (metertype == 0)
+			{
+				//cm
+				sprintf(szData, "%g", vis);
+			}
+			else
+			{
+				//inches
+				sprintf(szData, "%g", vis * 0.3937007874015748F);
+			}
+		}
+		else if (vType == "Status")
+		{
+			sprintf(szData, "%d", nValue);
+		}
+		else if (vType == "Level")
+		{
+			std::string lstatus;
+			int llevel = 0;
+			bool bHaveDimmer = false;
+			bool bHaveGroupCmd = false;
+			int maxDimLevel = 0;
+			GetLightStatus(devType, devSubType, static_cast<_eSwitchType>(metertypein), 1, rawsendValue, lstatus, llevel, bHaveDimmer, maxDimLevel, bHaveGroupCmd);
 
-	if ((vType=="Temperature") || (vType=="Temperature 1") || (vType=="Temperature 2")|| (vType == "Set point"))
-	{
-		double tvalue=ConvertTemperature(atof(rawsendValue.c_str()),tempsign);
-		sprintf(szData,"%.1f", tvalue);
-	}
-	else if (vType == "Concentration")
-	{
-		sprintf(szData,"%d", nValue);
-	}
-	else if (vType == "Humidity")
-	{
-		sprintf(szData,"%d", atoi(rawsendValue.c_str()));
-	}
-	else if (vType == "Humidity Status")
-	{
-		sprintf(szData,"%s", RFX_Humidity_Status_Desc(atoi(rawsendValue.c_str())));	
-	}
-	else if (vType == "Barometer")
-	{
-		sprintf(szData,"%.1f", atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Forecast")
-	{
-		int forecast=atoi(rawsendValue.c_str());
-		if (forecast!=baroForecastNoInfo)
-		{
-			sprintf(szData,"%s", RFX_Forecast_Desc(forecast));
+			int level = atoi(rawsendValue.c_str());
+
+			if (maxDimLevel != 0)
+				level = (int) float((100.0F / float(maxDimLevel)) * level);
+
+			if (lstatus.find("Off") != std::string::npos)
+				level = 0;
+
+			sprintf(szData, "%d", level);
 		}
-		else {
-			sprintf(szData,"%d", forecast);
-		}
-	}
-	else if (vType == "Altitude")
-	{
-		sprintf(szData, "%.1f", atof(rawsendValue.c_str()));
-	}
-	else if (vType == "UV")
-	{
-		float UVI = static_cast<float>(atof(rawsendValue.c_str()));
-		sprintf(szData,"%.1f",UVI);
-	}
-	else if (vType == "Direction")
-	{
-		float Direction = static_cast<float>(atof(rawsendValue.c_str()));
-		sprintf(szData,"%.1f",Direction); 
-	}
-	else if (vType == "Direction string")
-	{
-		sprintf(szData,"%s",rawsendValue.c_str());
-	}
-	else if (vType == "Speed")
-	{
-		int intSpeed = atoi(rawsendValue.c_str());
-		if (m_sql.m_windunit != WINDUNIT_Beaufort)
+		else if ((vType == "Current 1") || (vType == "Current 2") || (vType == "Current 3"))
 		{
-			sprintf(szData, "%.1f", float(intSpeed) * m_sql.m_windscale);
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Instant")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if ((vType == "Usage") || (vType == "Usage 1") || (vType == "Usage 2"))
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if ((vType == "Delivery") || (vType == "Delivery 1") || (vType == "Delivery 2"))
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Usage current")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Delivery current")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Gas usage")
+		{
+			sprintf(szData, "%g", std::stof(rawsendValue) / 1000.0F);
+		}
+		else if (vType == "Weight")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Voltage")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Value")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Visibility")
+		{
+			float vis = std::stof(rawsendValue);
+			if (metertype == 0)
+			{
+				//km
+				sprintf(szData, "%g", vis);
+			}
+			else
+			{
+				//miles
+				sprintf(szData, "%g", vis * 0.6214F);
+			}
+		}
+		else if (vType == "Solar Radiation")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Soil Moisture")
+		{
+			sprintf(szData, "%d", nValue);
+		}
+		else if (vType == "Leaf Wetness")
+		{
+			sprintf(szData, "%d", nValue);
+		}
+		else if (vType == "Percentage")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Fanspeed")
+		{
+			sprintf(szData, "%d", std::stoi(rawsendValue));
+		}
+		else if (vType == "Pressure")
+		{
+			strcpy(szData, rawsendValue.c_str());
+		}
+		else if (vType == "Lux")
+		{
+			strcpy(szData, rawsendValue.c_str());
 		}
 		else
-		{
-			float speedms = float(intSpeed)*0.1f;
-			sprintf(szData, "%d", MStoBeaufort(speedms));
-		}
+			return ""; //unhandled type
 	}
-	else if (vType == "Gust")
+	catch (...)
 	{
-		int intGust=atoi(rawsendValue.c_str());
-		if (m_sql.m_windunit != WINDUNIT_Beaufort)
-		{
-			sprintf(szData, "%.1f", float(intGust) *m_sql.m_windscale);
-		}
-		else
-		{
-			float gustms = float(intGust)*0.1f;
-			sprintf(szData, "%d", MStoBeaufort(gustms));
-		}
+		_log.Log(LOG_ERROR, "BasePush: Problem with conversion!");
 	}
-	else if (vType == "Chill")
+	if (szData[0] != 0)
 	{
-		double tvalue=ConvertTemperature(atof(rawsendValue.c_str()),tempsign);
-		sprintf(szData,"%.1f", tvalue);
-	}
-	else if (vType == "Rain rate")
-	{
-		sprintf(szData, "%.1f", atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Total rain")
-	{
-		sprintf(szData, "%.1f", atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Counter")
-	{
-		strcpy(szData, rawsendValue.c_str());
-	}	
-	else if (vType == "Mode")
-	{
-		sprintf(szData,"Not supported yet");
-	}
-	else if (vType == "Sound Level")
-	{
-		strcpy(szData, rawsendValue.c_str());
-	}
-	
-	else if (vType == "Status")
-	{
-		sprintf(szData, "%d", nValue);
-	}	
-	else if ((vType == "Current 1") || (vType == "Current 2") || (vType == "Current 3"))
-	{
-		sprintf(szData, "%.3f", atof(rawsendValue.c_str()));
-	}	
-	else if (vType == "Instant")
-	{
-		sprintf(szData, "%.3f", atof(rawsendValue.c_str()));
-	}
-	else if ((vType == "Usage") || (vType == "Usage 1") || (vType == "Usage 2") )
-	{
-		strcpy(szData,rawsendValue.c_str());
-	}	
-	else if ((vType == "Delivery") || (vType == "Delivery 1") || (vType == "Delivery 2") )
-	{
-		strcpy(szData, rawsendValue.c_str());
-	}
-	else if (vType == "Usage current")
-	{
-		sprintf(szData,"%.1f",atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Delivery current")
-	{
-		sprintf(szData,"%.1f",atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Gas usage")
-	{
-		sprintf(szData, "%.3f", atof(rawsendValue.c_str()) / 1000.0f);
-	}
-	else if (vType == "Weight")
-	{
-		sprintf(szData,"%.1f",atof(rawsendValue.c_str()));
-	}	
-	else if (vType == "Voltage")
-	{
-		sprintf(szData,"%.3f",atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Value")
-	{
-		sprintf(szData,"%d", atoi(rawsendValue.c_str())); //??
-	}
-	else if (vType == "Visibility")
-	{
-		float vis = static_cast<float>(atof(rawsendValue.c_str()));
-		if (metertype==0)
-		{
-			//km
-			sprintf(szData,"%.1f",vis);
-		}
-		else
-		{
-			//miles
-			sprintf(szData,"%.1f",vis*0.6214f);
-		}
-	}
-	else if (vType == "Solar Radiation")
-	{
-		float radiation = static_cast<float>(atof(rawsendValue.c_str()));
-		sprintf(szData,"%.1f",radiation);
-	}
-	else if (vType == "Soil Moisture")
-	{
-		sprintf(szData,"%d",nValue);
-	}
-	else if (vType == "Leaf Wetness")
-	{
-		sprintf(szData,"%d",nValue);
-	}
-	else if (vType == "Percentage")
-	{
-		sprintf(szData,"%.2f",atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Fanspeed")
-	{
-		sprintf(szData,"%d",atoi(rawsendValue.c_str()));
-	}
-	else if (vType == "Pressure")
-	{
-		sprintf(szData,"%.1f",atof(rawsendValue.c_str()));
-	}
-	else if (vType == "Lux")
-	{
-		sprintf(szData,"%.0f",atof(rawsendValue.c_str()));
-	}
-	if (szData[0] != '\0') { 
 		std::string sendValue(szData);
-		if (includeUnit) {
-			sendValue+=" ";
-			sendValue+=unit;
+		if (includeUnit)
+		{
+			std::string unit = getUnit(devType, devSubType, delpos, metertypein);
+			if (!unit.empty())
+			{
+				sendValue += " ";
+				sendValue += unit;
+			}
 		}
 		return sendValue;
 	}
-	else {
-		_log.Log(LOG_ERROR,"Could not determine data push value");
-		return "";
-	}
+	_log.Log(LOG_ERROR, "BasePush: Could not determine data push value");
+	return "";
 }
 
-std::string CBasePush::getUnit(const int delpos, const int metertypein)
+std::string CBasePush::getUnit(const int devType, const int devSubType, const int delpos, const int metertypein)
 {
-	std::string vType = DropdownOptionsValue(m_DeviceRowIdx,delpos);
-	unsigned char tempsign=m_sql.m_tempsign[0];
-	_eMeterType metertype = (_eMeterType) metertypein;
-	char szData[100]= "";
+	std::string vType = DropdownOptionsValue(devType, devSubType, delpos);
+	if (vType == "???")
+		return ""; // No unit, unhandled
 
-	if ((vType=="Temperature") || (vType=="Temperature 1") || (vType=="Temperature 2")|| (vType == "Set point"))
+	unsigned char tempsign = m_sql.m_tempsign[0];
+	_eMeterType metertype = (_eMeterType)metertypein;
+	char szData[100];
+	szData[0] = 0;
+
+	if ((vType == "Temperature") || (vType == "Temperature 1") || (vType == "Temperature 2") || (vType == "Set point"))
 	{
-		sprintf(szData,"%c", tempsign);
+		sprintf(szData, "%c", tempsign);
 	}
 	else if (vType == "Humidity")
 	{
-		strcpy(szData,"%%");
+		strcpy(szData, "%%");
 	}
 	else if (vType == "Humidity Status")
 	{
@@ -740,16 +772,16 @@ std::string CBasePush::getUnit(const int delpos, const int metertypein)
 	}
 	else if (vType == "Rain rate")
 	{
-		strcpy(szData,"");
+		strcpy(szData, "");
 	}
 	else if (vType == "Total rain")
 	{
 		strcpy(szData, "");
-	}	
+	}
 	else if (vType == "Counter")
 	{
 		strcpy(szData, "");
-	}	
+	}
 	else if (vType == "Mode")
 	{
 		strcpy(szData, "");
@@ -761,20 +793,20 @@ std::string CBasePush::getUnit(const int delpos, const int metertypein)
 	else if (vType == "Status")
 	{
 		strcpy(szData, "");
-	}	
+	}
 	else if ((vType == "Current 1") || (vType == "Current 2") || (vType == "Current 3"))
 	{
 		strcpy(szData, "");
-	}	
+	}
 	else if (vType == "Instant")
 	{
 		strcpy(szData, "");
-	}	
-	else if ((vType == "Usage") || (vType == "Usage 1") || (vType == "Usage 2") )
+	}
+	else if ((vType == "Usage") || (vType == "Usage 1") || (vType == "Usage 2"))
 	{
 		strcpy(szData, "Watt");
-	}	
-	else if ((vType == "Delivery") || (vType == "Delivery 1") || (vType == "Delivery 2") )
+	}
+	else if ((vType == "Delivery") || (vType == "Delivery 1") || (vType == "Delivery 2"))
 	{
 		strcpy(szData, "Watt");
 	}
@@ -793,7 +825,7 @@ std::string CBasePush::getUnit(const int delpos, const int metertypein)
 	else if (vType == "Weight")
 	{
 		strcpy(szData, m_sql.m_weightsign.c_str());
-	}	
+	}
 	else if (vType == "Voltage")
 	{
 		strcpy(szData, "V");
@@ -804,7 +836,7 @@ std::string CBasePush::getUnit(const int delpos, const int metertypein)
 	}
 	else if (vType == "Visibility")
 	{
-		if (metertype==0)
+		if (metertype == 0)
 		{
 			//km
 			strcpy(szData, "km");
@@ -847,13 +879,57 @@ std::string CBasePush::getUnit(const int delpos, const int metertypein)
 	{
 		strcpy(szData, "ppm");
 	}
-	if (szData[0] != '\0') { 
+	if (szData[0] != 0) {
 		std::string sendValue(szData);
 		return sendValue;
 	}
 	// No unit
 	return "";
 }
+
+void CBasePush::ReloadPushLinks(const PushType PType)
+{
+	std::lock_guard<std::mutex> l(m_link_mutex);
+	m_pushlinks.clear();
+	std::vector<std::vector<std::string>> result;
+	result = m_sql.safe_query("SELECT A.DeviceRowID, A.DelimitedValue, B.ID, B.Name, B.Type, B.SubType, B.SwitchType "
+				  "FROM PushLink as A, DeviceStatus as B "
+				  "WHERE (A.PushType==%d AND A.Enabled==1 AND A.DeviceRowID == B.ID)",
+				  PType);
+	for (const auto &sd : result)
+	{
+		_tPushLinks tlink;
+		tlink.DeviceRowIdx = std::stoull(sd[0]);
+		tlink.DelimiterPos = std::stoi(sd[1]);
+		tlink.DeviceName = sd[3];
+		tlink.devType = std::stoi(sd[4]);
+		tlink.devSubType = std::stoi(sd[5]);
+		tlink.metertype = std::stoi(sd[6]);
+		m_pushlinks.push_back(tlink);
+	}
+}
+
+bool CBasePush::IsLinkInDatabase(const uint64_t DeviceRowIdx)
+{
+	std::lock_guard<std::mutex> l(m_link_mutex);
+	return std::any_of(m_pushlinks.begin(), m_pushlinks.end(), [&](const _tPushLinks &val) { return DeviceRowIdx == val.DeviceRowIdx; });
+}
+
+bool CBasePush::GetPushLink(const uint64_t DeviceRowIdx, _tPushLinks &plink)
+{
+	std::lock_guard<std::mutex> l(m_link_mutex);
+	for (const auto &itt : m_pushlinks)
+	{
+		if (itt.DeviceRowIdx == DeviceRowIdx)
+		{
+			plink = itt;
+			return true;
+		}
+	}
+	return false;
+}
+
+
 
 //Webserver helpers
 namespace http {
@@ -862,15 +938,13 @@ namespace http {
 		{
 			root["status"] = "OK";
 			root["title"] = "GetDevicesListOnOff";
-			int ii = 0;
 			std::vector<std::vector<std::string> > result;
 			result = m_sql.safe_query("SELECT ID, Name, Type, SubType FROM DeviceStatus WHERE (Used == 1) ORDER BY Name");
-			if (result.size() > 0)
+			if (!result.empty())
 			{
-				std::vector<std::vector<std::string> >::const_iterator itt;
-				for (itt = result.begin(); itt != result.end(); ++itt)
+				int ii = 0;
+				for (const auto &sd : result)
 				{
-					std::vector<std::string> sd = *itt;
 					int dType = atoi(sd[2].c_str());
 					int dSubType = atoi(sd[3].c_str());
 					std::string sOptions = RFX_Type_SubType_Values(dType, dSubType);
@@ -883,5 +957,5 @@ namespace http {
 				}
 			}
 		}
-	}
-}
+	} // namespace server
+} // namespace http

@@ -5,20 +5,23 @@
 //
 #ifdef ENABLE_PYTHON
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include "PluginManager.h"
 #include "Plugins.h"
 #include "PluginMessages.h"
 #include "PluginTransports.h"
 
-#include "../main/Helper.h"
-#include "../main/Logger.h"
-#include "../main/SQLHelper.h"
-#include "../main/WebServer.h"
-#include "../main/mainworker.h"
-#include "../main/EventSystem.h"
-#include "../json/json.h"
-#include "../tinyxpath/tinyxml.h"
-#include "../main/localtime_r.h"
+#include <json/json.h>
+#include "../../main/EventSystem.h"
+#include "../../main/Helper.h"
+#include "../../main/mainworker.h"
+#include "../../main/localtime_r.h"
+#include "../../main/Logger.h"
+#include "../../main/SQLHelper.h"
+#include "../../main/WebServer.h"
+#include "../../tinyxpath/tinyxml.h"
 #ifdef WIN32
 #	include <direct.h>
 #else
@@ -26,10 +29,7 @@
 #endif
 
 #include "DelayedLink.h"
-
-#ifdef ENABLE_PYTHON
 #include "../../main/EventsPythonModule.h"
-#endif
 
 #define MINIMUM_PYTHON_VERSION "3.4.0"
 
@@ -50,6 +50,7 @@
 		}
 
 extern std::string szUserDataFolder;
+extern std::string szPyVersion;
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 
@@ -57,37 +58,27 @@ namespace Plugins {
 
 	PyMODINIT_FUNC PyInit_Domoticz(void);
 
-#ifdef ENABLE_PYTHON
-    // Need forward decleration
-    // PyMODINIT_FUNC PyInit_DomoticzEvents(void);
-#endif // ENABLE_PYTHON
+	// Need forward decleration
+	// PyMODINIT_FUNC PyInit_DomoticzEvents(void);
 
-	boost::mutex PluginMutex;	// controls accessto the message queue
-	std::queue<CPluginMessageBase*>	PluginMessageQueue;
+	std::mutex PluginMutex;	// controls accessto the message queue and m_pPlugins map
 	boost::asio::io_service ios;
 
 	std::map<int, CDomoticzHardwareBase*>	CPluginSystem::m_pPlugins;
 	std::map<std::string, std::string>		CPluginSystem::m_PluginXml;
+	void *CPluginSystem::m_InitialPythonThread;
 
-	CPluginSystem::CPluginSystem() : m_stoprequested(false)
+	CPluginSystem::CPluginSystem()
 	{
 		m_bEnabled = false;
 		m_bAllPluginsStarted = false;
 		m_iPollInterval = 10;
 	}
 
-	CPluginSystem::~CPluginSystem(void)
-	{
-	}
-
 	bool CPluginSystem::StartPluginSystem()
 	{
 		// Flush the message queue (should already be empty)
-		boost::lock_guard<boost::mutex> l(PluginMutex);
-		while (!PluginMessageQueue.empty())
-		{
-			PluginMessageQueue.pop();
-		}
+		std::lock_guard<std::mutex> l(PluginMutex);
 
 		m_pPlugins.clear();
 
@@ -100,9 +91,10 @@ namespace Plugins {
 		// Pull UI elements from plugins and create manifest map in memory
 		BuildManifest();
 
-		m_thread = new boost::thread(boost::bind(&CPluginSystem::Do_Work, this));
+		m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+		SetThreadName(m_thread->native_handle(), "PluginMgr");
 
-		std::string sVersion(Py_GetVersion());
+		szPyVersion = Py_GetVersion();
 
 		try
 		{
@@ -111,7 +103,7 @@ namespace Plugins {
 				Py_Finalize();
 			}
 
-			sVersion = sVersion.substr(0, sVersion.find_first_of(' '));
+			std::string sVersion = szPyVersion.substr(0, szPyVersion.find_first_of(' '));
 			if (sVersion < MINIMUM_PYTHON_VERSION)
 			{
 				_log.Log(LOG_STATUS, "PluginSystem: Invalid Python version '%s' found, '%s' or above required.", sVersion.c_str(), MINIMUM_PYTHON_VERSION);
@@ -134,17 +126,66 @@ namespace Plugins {
 			}
 
 			Py_Initialize();
+
+			// Initialise threads. Python 3.7+ does this inside Py_Initialize so done here for compatibility
+			if (!PyEval_ThreadsInitialized())
+			{
+				PyEval_InitThreads();
+			}
+
 			m_InitialPythonThread = PyEval_SaveThread();
 
 			m_bEnabled = true;
 			_log.Log(LOG_STATUS, "PluginSystem: Started, Python version '%s'.", sVersion.c_str());
 		}
 		catch (...) {
-			_log.Log(LOG_ERROR, "PluginSystem: Failed to start, Python version '%s', Program '%S', Path '%S'.", sVersion.c_str(), Py_GetProgramFullPath(), Py_GetPath());
+			_log.Log(LOG_ERROR, "PluginSystem: Failed to start, Python version '%s', Program '%S', Path '%S'.", szPyVersion.c_str(), Py_GetProgramFullPath(), Py_GetPath());
 			return false;
 		}
 
 		return true;
+	}
+
+	bool CPluginSystem::StopPluginSystem()
+	{
+		m_bAllPluginsStarted = false;
+
+		if (m_thread)
+		{
+			RequestStop();
+			m_thread->join();
+			m_thread.reset();
+		}
+
+		m_pPlugins.clear();
+
+		if (Py_LoadLibrary() && m_InitialPythonThread)
+		{
+			if (Py_IsInitialized()) {
+				PyEval_RestoreThread((PyThreadState*)m_InitialPythonThread);
+				Py_Finalize();
+			}
+		}
+
+		_log.Log(LOG_STATUS, "PluginSystem: Stopped.");
+		return true;
+	}
+
+	void CPluginSystem::LoadSettings()
+	{
+		//	Add command to message queue for every plugin
+		for (const auto &plugin : m_pPlugins)
+		{
+			if (plugin.second)
+			{
+				auto pPlugin = reinterpret_cast<CPlugin *>(plugin.second);
+				pPlugin->MessagePlugin(new SettingsDirective(pPlugin));
+			}
+			else
+			{
+				_log.Log(LOG_ERROR, "%s: NULL entry found in Plugins map for Hardware %d.", __func__, plugin.first);
+			}
+		}
 	}
 
 	void CPluginSystem::BuildManifest()
@@ -165,28 +206,27 @@ namespace Plugins {
 		}
 
 		std::vector<std::string> DirEntries, FileEntries;
-		std::vector<std::string>::const_iterator itt_Dir, itt_File;
 		std::string plugin_Dir, plugin_File;
 
 		DirectoryListing(DirEntries, plugin_BaseDir, true, false);
-		for (itt_Dir = DirEntries.begin(); itt_Dir != DirEntries.end(); ++itt_Dir)
+		for (const auto &dir : DirEntries)
 		{
-			if (*itt_Dir != "examples")
+			if (dir != "examples")
 			{
 #ifdef WIN32
-				plugin_Dir = plugin_BaseDir + *itt_Dir + "\\";
+				plugin_Dir = plugin_BaseDir + dir + "\\";
 #else
-				plugin_Dir = plugin_BaseDir + *itt_Dir + "/";
+				plugin_Dir = plugin_BaseDir + dir + "/";
 #endif
 				DirectoryListing(FileEntries, plugin_Dir, false, true);
-				for (itt_File = FileEntries.begin(); itt_File != FileEntries.end(); ++itt_File)
+				for (const auto &file : FileEntries)
 				{
-					if (*itt_File == "plugin.py")
+					if (file == "plugin.py")
 					{
 						try
 						{
 							std::string sXML;
-							plugin_File = plugin_Dir + *itt_File;
+							plugin_File = plugin_Dir + file;
 							std::string line;
 							std::ifstream readFile(plugin_File.c_str());
 							bool bFound = false;
@@ -194,7 +234,7 @@ namespace Plugins {
 								if (!bFound && (line.find("<plugin") != std::string::npos))
 									bFound = true;
 								if (bFound)
-									sXML += line + "\n";
+									sXML += line + '\n';
 								if (line.find("</plugin>") != std::string::npos)
 									break;
 							}
@@ -214,10 +254,10 @@ namespace Plugins {
 
 	CDomoticzHardwareBase* CPluginSystem::RegisterPlugin(const int HwdID, const std::string & Name, const std::string & PluginKey)
 	{
-		CPlugin*	pPlugin = NULL;
+		CPlugin *pPlugin = nullptr;
 		if (m_bEnabled)
 		{
-			boost::lock_guard<boost::mutex> l(PluginMutex);
+			std::lock_guard<std::mutex> l(PluginMutex);
 			pPlugin = new CPlugin(HwdID, Name, PluginKey);
 			m_pPlugins.insert(std::pair<int, CPlugin*>(HwdID, pPlugin));
 		}
@@ -225,16 +265,22 @@ namespace Plugins {
 		{
 			_log.Log(LOG_STATUS, "PluginSystem: '%s' Registration ignored, Plugins are not enabled.", Name.c_str());
 		}
-		return (CDomoticzHardwareBase*)pPlugin;
+		return reinterpret_cast<CDomoticzHardwareBase*>(pPlugin);
 	}
 
 	void CPluginSystem::DeregisterPlugin(const int HwdID)
 	{
 		if (m_pPlugins.count(HwdID))
 		{
-			boost::lock_guard<boost::mutex> l(PluginMutex);
+			std::lock_guard<std::mutex> l(PluginMutex);
 			m_pPlugins.erase(HwdID);
 		}
+	}
+
+	void BoostWorkers()
+	{
+		
+		ios.run();
 	}
 
 	void CPluginSystem::Do_Work()
@@ -244,127 +290,52 @@ namespace Plugins {
 			sleep_milliseconds(500);
 		}
 
-		_log.Log(LOG_STATUS, "PluginSystem: Entering work loop.");
-
-		ios.reset();
-		boost::thread bt(boost::bind(&boost::asio::io_service::run, &ios));
-		while (!m_stoprequested)
+		if (m_pPlugins.size())
 		{
-			if (ios.stopped())  // make sure that there is a boost thread to service i/o operations if there are any transports that need it
-			{
-				bool bIos_required = false;
-				for (std::map<int, CDomoticzHardwareBase*>::iterator itt = m_pPlugins.begin(); itt != m_pPlugins.end(); itt++)
-				{
-					CPlugin*	pPlugin = (CPlugin*)itt->second;
-					if (pPlugin && pPlugin->IoThreadRequired())
-					{
-						bIos_required = true;
-						break;
-					}
-				}
-
-				if (bIos_required)
-				{
-					ios.reset();
-					_log.Log(LOG_NORM, "PluginSystem: Restarting I/O service thread.");
-					boost::thread bt(boost::bind(&boost::asio::io_service::run, &ios));
-				}
-			}
-
-			time_t	Now = time(0);
-			bool	bProcessed = true;
-			while (bProcessed)
-			{
-				CPluginMessageBase* Message = NULL;
-				bProcessed = false;
-
-				// Cycle once through the queue looking for the 1st message that is ready to process
-				for (size_t i = 0; i < PluginMessageQueue.size(); i++)
-				{
-					boost::lock_guard<boost::mutex> l(PluginMutex);
-					CPluginMessageBase* FrontMessage = PluginMessageQueue.front();
-					PluginMessageQueue.pop();
-					if (FrontMessage->m_When <= Now)
-					{
-						// Message is ready now or was already ready (this is the case for almost all messages)
-						Message = FrontMessage;
-						break;
-					}
-					// Message is for sometime in the future so requeue it (this happens when the 'Delay' parameter is used on a Send)
-					PluginMessageQueue.push(FrontMessage);
-				}
-
-				if (Message)
-				{
-					bProcessed = true;
-					try
-					{
-						Message->Process();
-					}
-					catch(...)
-					{
-						_log.Log(LOG_ERROR, "PluginSystem: Exception processing message.");
-					}
-				}
-				// Free the memory for the message
-				if (Message) delete Message;
-			}
-			sleep_milliseconds(50);
+			_log.Log(LOG_STATUS, "PluginSystem: %d plugins started.", m_pPlugins.size());
 		}
 
-		_log.Log(LOG_STATUS, "PluginSystem: Exiting work loop.");
+		// Create initial IO Service thread
+		ios.restart();
+		// Create some work to keep IO Service alive
+		auto work = boost::asio::io_service::work(ios);
+		boost::thread_group BoostThreads;
+		for (int i = 0; i < 1; i++)
+		{
+			boost::thread*	bt = BoostThreads.create_thread(BoostWorkers);
+			SetThreadName(bt->native_handle(), "Plugin_ASIO");
+		}
+
+		while (!IsStopRequested(500))
+		{
+		}
+
+		// Shutdown IO workers
+		ios.stop();
+		BoostThreads.join_all();
+
+		_log.Log(LOG_STATUS, "PluginSystem: Exited work loop.");
 	}
 
-	bool CPluginSystem::StopPluginSystem()
+	void CPluginSystem::DeviceModified(uint64_t DevIdx)
 	{
-		m_bAllPluginsStarted = false;
-
-		if (m_thread)
-		{
-			m_stoprequested = true;
-			m_thread->join();
-			m_thread = NULL;
-		}
-
-		// Hardware should already be stopped to just flush the queue (should already be empty)
-		boost::lock_guard<boost::mutex> l(PluginMutex);
-		while (!PluginMessageQueue.empty())
-		{
-			PluginMessageQueue.pop();
-		}
-
-		m_pPlugins.clear();
-
-		if (Py_LoadLibrary()  && m_InitialPythonThread)
-		{
-			if (Py_IsInitialized()) {
-				PyEval_RestoreThread((PyThreadState*)m_InitialPythonThread);
-				Py_Finalize();
-			}
-		}
-
-		_log.Log(LOG_STATUS, "PluginSystem: Stopped.");
-		return true;
+		std::vector<std::vector<std::string> > result;
+		result = m_sql.safe_query("SELECT HardwareID, Unit FROM DeviceStatus WHERE (ID == %" PRIu64 ")", DevIdx);
+		if (result.empty())
+			return;
+		std::vector<std::string> sd = result[0];
+		std::string sHwdID = sd[0];
+		std::string Unit = sd[1];
+		CDomoticzHardwareBase *pHardware = m_mainworker.GetHardwareByIDType(sHwdID, HTYPE_PythonPlugin);
+		if (pHardware == nullptr)
+			return;
+		//std::vector<std::string> sd = result[0];
+		//GizMoCuz: Why does this work with UNIT ? Why not use the device idx which is always unique ?
+		_log.Debug(DEBUG_NORM, "CPluginSystem::DeviceModified: Notifying plugin %u about modification of device %u", atoi(sHwdID.c_str()), atoi(Unit.c_str()));
+		Plugins::CPlugin *pPlugin = (Plugins::CPlugin*)pHardware;
+		pPlugin->DeviceModified(atoi(Unit.c_str()));
 	}
-
-	void CPluginSystem::LoadSettings()
-	{
-		//	Add command to message queue for every plugin
-		boost::lock_guard<boost::mutex> l(PluginMutex);
-		for (std::map<int, CDomoticzHardwareBase*>::iterator itt = m_pPlugins.begin(); itt != m_pPlugins.end(); itt++)
-		{
-			if (itt->second)
-			{
-				SettingsDirective*	Message = new SettingsDirective((CPlugin*)itt->second);
-				PluginMessageQueue.push(Message);
-			}
-			else
-			{
-				_log.Log(LOG_ERROR, "%s: NULL entry found in Plugins map for Hardware %d.", __func__, itt->first);
-			}
-		}
-	}
-}
+} // namespace Plugins
 
 //Webserver helpers
 namespace http {
@@ -374,17 +345,23 @@ namespace http {
 			int		iPluginCnt = root.size();
 			Plugins::CPluginSystem Plugins;
 			std::map<std::string, std::string>*	PluginXml = Plugins.GetManifest();
-			for (std::map<std::string, std::string>::iterator it_type = PluginXml->begin(); it_type != PluginXml->end(); it_type++)
+			for (const auto &type : *PluginXml)
 			{
 				TiXmlDocument	XmlDoc;
-				XmlDoc.Parse(it_type->second.c_str());
+				XmlDoc.Parse(type.second.c_str());
 				if (XmlDoc.Error())
 				{
-					_log.Log(LOG_ERROR, "%s: Parsing '%s', '%s' at line %d column %d in XML '%s'.", __func__, it_type->first.c_str(), XmlDoc.ErrorDesc(), XmlDoc.ErrorRow(), XmlDoc.ErrorCol(), it_type->second.c_str());
+					_log.Log(LOG_ERROR,
+						 "%s: Parsing '%s', '%s' at line %d column %d in "
+						 "XML '%s'.",
+						 __func__, type.first.c_str(), XmlDoc.ErrorDesc(), XmlDoc.ErrorRow(), XmlDoc.ErrorCol(),
+						 type.second.c_str());
 				}
 				else
 				{
 					TiXmlNode* pXmlNode = XmlDoc.FirstChild("plugin");
+					TiXmlPrinter Xmlprinter;
+					Xmlprinter.SetStreamPrinting();
 					for (pXmlNode; pXmlNode; pXmlNode = pXmlNode->NextSiblingElement())
 					{
 						TiXmlElement* pXmlEle = pXmlNode->ToElement();
@@ -396,6 +373,15 @@ namespace http {
 							ATTRIBUTE_VALUE(pXmlEle, "author", root[iPluginCnt]["author"]);
 							ATTRIBUTE_VALUE(pXmlEle, "wikilink", root[iPluginCnt]["wikiURL"]);
 							ATTRIBUTE_VALUE(pXmlEle, "externallink", root[iPluginCnt]["externalURL"]);
+
+							TiXmlElement* pXmlDescNode = (TiXmlElement*)pXmlEle->FirstChild("description");
+							std::string		sDescription;
+							if (pXmlDescNode)
+							{
+								pXmlDescNode->Accept(&Xmlprinter);
+								sDescription = Xmlprinter.CStr();
+							}
+							root[iPluginCnt]["description"] = sDescription;
 
 							TiXmlNode* pXmlParamsNode = pXmlEle->FirstChild("params");
 							int	iParams = 0;
@@ -412,6 +398,8 @@ namespace http {
 									ATTRIBUTE_VALUE(pXmlEle, "width", root[iPluginCnt]["parameters"][iParams]["width"]);
 									ATTRIBUTE_VALUE(pXmlEle, "required", root[iPluginCnt]["parameters"][iParams]["required"]);
 									ATTRIBUTE_VALUE(pXmlEle, "default", root[iPluginCnt]["parameters"][iParams]["default"]);
+									ATTRIBUTE_VALUE(pXmlEle, "password", root[iPluginCnt]["parameters"][iParams]["password"]);
+									ATTRIBUTE_VALUE(pXmlEle, "rows", root[iPluginCnt]["parameters"][iParams]["rows"]);
 
 									TiXmlNode* pXmlOptionsNode = pXmlEle->FirstChild("options");
 									int	iOptions = 0;
@@ -455,7 +443,7 @@ namespace http {
 			Plugins::CPluginSystem Plugins;
 			std::map<int, CDomoticzHardwareBase*>*	PluginHwd = Plugins.GetHardware();
 			std::string		sRetVal = Hardware_Type_Desc(HTYPE_PythonPlugin);
-			Plugins::CPlugin*	pPlugin = NULL;
+			Plugins::CPlugin *pPlugin = nullptr;
 
 			// Disabled plugins will not be in plugin hardware map
 			if (PluginHwd->count(HwdID))
@@ -467,15 +455,19 @@ namespace http {
 			{
 				std::string	sKey = "key=\"" + pPlugin->m_PluginKey + "\"";
 				std::map<std::string, std::string>*	PluginXml = Plugins.GetManifest();
-				for (std::map<std::string, std::string>::iterator it_type = PluginXml->begin(); it_type != PluginXml->end(); it_type++)
+				for (const auto &type : *PluginXml)
 				{
-					if (it_type->second.find(sKey) != std::string::npos)
+					if (type.second.find(sKey) != std::string::npos)
 					{
 						TiXmlDocument	XmlDoc;
-						XmlDoc.Parse(it_type->second.c_str());
+						XmlDoc.Parse(type.second.c_str());
 						if (XmlDoc.Error())
 						{
-							_log.Log(LOG_ERROR, "%s: Error '%s' at line %d column %d in XML '%s'.", __func__, XmlDoc.ErrorDesc(), XmlDoc.ErrorRow(), XmlDoc.ErrorCol(), it_type->second.c_str());
+							_log.Log(LOG_ERROR,
+								 "%s: Error '%s' at line %d column "
+								 "%d in XML '%s'.",
+								 __func__, XmlDoc.ErrorDesc(), XmlDoc.ErrorRow(), XmlDoc.ErrorCol(),
+								 type.second.c_str());
 						}
 						else
 						{
@@ -515,10 +507,10 @@ namespace http {
 				Plugins::CPlugin*	pPlugin = (Plugins::CPlugin*)(*PluginHwd)[HwID];
 				if (pPlugin)
 				{
-					pPlugin->SendCommand(Unit, sAction, 0, 0);
+					pPlugin->SendCommand(Unit, sAction, 0, NoColor);
 				}
 			}
 		}
-	}
-}
+	} // namespace server
+} // namespace http
 #endif

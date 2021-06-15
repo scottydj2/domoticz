@@ -1,4 +1,312 @@
-Version 3.7988 (July xth 2017)
+Version 2021.1 (April 17 2021)
+- Implemented: Added option to set loglevel per hardware device
+- Implemented: Added optional parameter 'level' to addlogmessage JSON
+- Implemented: AirconWithMe wifi module
+- Implemented: Allow complete IPv6 address in local network setting
+- Implemented: Allow custom icons for thermostat setpoints on floorplan
+- Implemented: Allow custom icons for utility sensors
+- Implemented: Build systems for linux based on github actions
+- Implemented: Build system for docker
+- Implemented: Counter meter type now supports a divider
+- Implemented: Custom icons for RGB/W
+- Implemented: GUI; Auto refresh feature for graphical logs
+- Implemented: Hardware Monitor, Add clock speeds for Raspberry Pi
+- Implemented: Honeywell, Add cooling control and Fahrenheit support
+- Implemented: Internal light commands for Fan types Casafan, FT1211R, Falmec, LucciAirDCII, IthoECO and Novy
+- Implemented: Inverted energy icon colors in report
+- Implemented: Max. Watt settings for power devices (defaults to 6000W)
+- Implemented: Mercedes Me API's (BYOCAR) as an (e)Vehicle supporting lock/open, odo, fuellevel
+- Implemented: Meteorologisk (Meteorologisk institutt Norway) hardware support
+- Implemented: P1 Meter, added support for Encryption
+- Implemented: RFXCom Byron BY doorbell
+- Implemented: RSSI support for Distance Sensor, Moisture Sensor, Watt Meter, kWh Meter
+- Implemented: RTL433, Added RF Signal Strength in device tab based on reported SNR
+- Implemented: RTL433, Added Pressure (PSI) type
+- Implemented: RTL433, Added UV type
+- Implemented: RTL433, Added X-10 Security support
+- Implemented: RTL433, Switched to Json input
+- Implemented: Teleinfo over TCP
+- Implemented: Websocket notification for secondary/sub devices
+- Implemented: ZWave, Legend and tooltips in Neighbors overview
+- Updated: API/JSON: added API to delete daterange in history logs for one ID
+- Updated: Blebox; use of the latest SwitchBox APIthe latest SwitchBox API
+- Updated: dzVents; version 3.1.7 ( https://www.domoticz.com/wiki/DzVents:_next_generation_LUA_scripting )
+- Updated: eVehicles; added ODO meter, unlock/open alert, max charge level to Tesla module
+- Updated: eVehicles; added option to manual set API key
+- Updated: EvoHome; decode, display and store hotwater setpoint
+- Updated: GUI; Lay-out of notifications tab
+- Updated: MQTT; added option to choose notification subsystem
+- Updated: MQTT; added publish schemes: device index, device name and implemented custom topics for in- and outbound messages
+- Updated: OpenZWave; configuration files
+- Updated: OpenZWave; Added Volatile Organic Compound sensor
+- Updated: Openweathermap; use latest API and overall improvements
+- Updated: OTGW; ready for firmware 5.0 and added domestic hot water flow rate
+- Updated: Plugin manager: ready for Python 3.9+
+- Updated: Plugwise; update of scene selector and added a migration process
+- Updated: SolarEdge; add support for 3 Phase inverters
+- Updated: Tado; add support for per-zone Open Window Detection
+- Updated: TTNMQTT; Better GPS/Locations handling, distance calculation (Geofencing)
+- Updated: TTNMQTT; Improved calculation and storage of signal-levels
+- Updated: USBTin; Added support for Bloc 9
+- Updated: Xiaomi; added new device types
+- Changed: Devices, ZWave, each node as separate hardware for easy selection
+- Changed: Differentiate kWh, kVah, kVar and kVarh
+- Changed: During a database backup we now 'sleep' when the status != OK
+- Changed: Energy devices allow negative values
+- Changed: Use of Clang-Tidy rules to force ++ coding consistency
+- Fixed: Annatherm Presets usage in Events. Please use the following percentages: 10% for Home, 20% for Away, 30% Night 40% for Vacation
+- Fixed: Cache refresh issue on Safari
+- Fixed: Changing a value from a Thermostat Setpoint via the JSON API/MQTT resulted in a double event trigger
+- Fixed: Control for thermostat setpoints on floorplan
+- Fixed: Compiling on systems with recent Python versions
+- Fixed: Distance sensor was converting to miles instead of inches
+- Fixed: Icon uploading from Linux clients/browsers
+- Fixed: Floorplan uploading
+- Fixed: Font in events editor on MacOS
+- Fixed: Motherboard Sensors for big partitions
+- Fixed: Possible crash in CEventSystem::SetEventTrigger
+- Fixed: Preserve custom icon and description when switching device from used -> unused -> used
+- Fixed: Prevent duplicate keys in preferences table
+- Fixed: Pushtype selection mechanism
+- Fixed: Sound device was incorrectly displayed on the Floorplan
+- Fixed: Tado Zone/Home limit, setpoint mix-up
+- Fixed: User field in device logging for switches, -text-devices and for groups/scenes
+- Fixed: Windows installation respects configured log parameters
+- Fixed: Zwave various issues
+- For a full overview visit: https://www.domoticz.com/wiki/Domoticz_versions_-_Commits for details
+
+Version 2020.2 (April 26th 2020)
+- Implemented: GUI: New Update controller code
+- Implemented: GUI: Real-time updates of history-logs on device / scene changes
+- Fixed: Battery level Real-time updates
+- Fixed: Daikin wifi adaptor module
+- Fixed: Delete device now propagates to all relevant tables
+- Fixed: Possible security issue in the websocket layer
+- Fixed: Unwanted RFY protection popup
+- Updated: BuienRadar, Now possible to enter Station_ID or Latitude/Longitude
+- Updated: Deprecated Google Cloud Messaging system(gcm) replaced by Firebase Cloud Messaging (fcm)
+- Updated: dzVents version 3.0.2 ( https://www.domoticz.com/wiki/DzVents:_next_generation_LUA_scripting#History )
+- Updated: OpenZWave configuration files
+- Updated: OpenZWave library for windows
+- Updated: MQTT add option to enable/disable loop prevention
+- Changed: Removed external library dependencies from repository
+- Updated: Translations
+- Updated: TTNMQTT, improved handling CayenneLPP channels
+- For a full overview visit: https://www.domoticz.com/wiki/Domoticz_versions_-_Commits for details
+
+Version 2020.1 (March 22th 2020)
+- Implemented: BuienRadar
+- Implemented: DarkSky CloudCover sensor
+- Implemented: eVehicles framework, with Tesla as first hardware module
+- Implemented: EventSystem, option in Settings to enable/disable URL call logging containing full URL path
+- Implemented: Floorplan, add support for SVG
+- Implemented: GUI, OpenZWave added Refresh Node Information button, styling
+- Implemented: GUI: real-time updates on Devices tab (Websockets)
+- Implemented: GUI: Sun/Rain icons
+- Implemented: Hue, Add Support for Geo fence sensor, dimmer switches and Hue LCG002 GU10 spot
+- Implemented: Octoprint hardware module
+- Implemented: OpenZWave, JSON call to retrieve current battery levels for all nodes
+- Implemented: OpenZWave, Support for Loudness sensor
+- Implemented: OpenZWave, Support for Particulate_Mater_2_5 (Dust) sensor (ug/m3)
+- Implemented: OpenZWave, Support for Smoke density (%)
+- Implemented: OpenZWave, Support for Volatile_Organic_Compound (CO2, ppm)
+- Implemented: OpenZWave, Support for Frequency sensor
+- Implemented: Option to replace switch with another (same type)
+- Implemented: Per User favorites (with viewer rights)
+- Implemented: RFXCom implemented datatimeout for external P1 sensor
+- Implemented: RTL433, added Power (Watt) type
+- Implemented: RTL433, added rainfall_mm type
+- Implemented: Xiaomi, added Wireless Single Wall Switch
+- Implemented: DisableLogAutoUpdate and AddDBLogEntry device options for counters, to be enabled from plugins
+- Fixed: API, allow variabletype to be entered as text or integer in adduservariable and updateuservariable (#3320)
+- Fixed: GUI, Choosing Icon for ARC type switches
+- Fixed: GUI, Dashboard icon incremental counter (energy generated) not correct (#3231)
+- Fixed: GUI, device table initial order column
+- Fixed: GUI, Switch Log, date parsing in device log (#3206)
+- Fixed: GUI, Floorplan, contact type can no longer be switch
+- Fixed: GUI, Floorplan, custom image for Custom Sensor
+- Fixed: GUI, Floorplan, fixed blind switching (#3267)
+- Fixed: GUI, Weight Log now displays correct Unit (#3211)
+- Fixed: GUI, OpenZWave Abort Include/Exclude button
+- Fixed: Blockly, handling incorrect time field
+- Fixed: Enery Generated report icon colors
+- Fixed: Evohome Web for updated library
+- Fixed: Google Notification System
+- Fixed: PhilipsHue
+- Fixed: SMS Notification System
+- Fixed: Telegram notification when odd number of underscores in text
+- Fixed: Youless, possible buffer overflow (#3261)
+- Updated: Domoticz scripts now run directly in the background
+- Updated: dzVents version 3.0.1 ( https://www.domoticz.com/wiki/DzVents:_next_generation_LUA_scripting#History )
+- Updated: HighCharts
+- Updated: Lua 5.3
+- Updated: Mosquitto 1.68
+- Updated: OpenZWave version 1.6
+- Updated: P1: Add support for Belgian and Luxembourgian meters
+- Updated: SQLite 3.31.1
+- Updated: Translations
+
+Version 4.10717 (May 9th 2019)
+- Fixed: dzVents, Allowing no error message for HTTP calls (#3191)
+- Fixed: EcoCompteur now uses the port specified in the hardware setup (#3184)
+- Fixed: Log for Weight sensor (#3192)
+- Fixed: issue with Session ID/Login
+- Fixed: issue with slightly too large labels for the selector switch (#3187)
+- Updated: dzVents (version 2.4.19, See dzVents/documentation/history.md)
+
+Version 4.10658 (May 5th 2019)
+- Implemented: [BleBox] Add support for airSensor and use the newest api for shutterBox
+- Implemented: Alecto WS5500 implemented (pTypeWeather)
+- Implemented: Anna Thermostat Added ability to select presets on the Anna via selector switch. Added ability to update the state of the proximity switch in the Anna thermostat.
+- Implemented: Better graph display for thermostat devices
+- Implemented: Blinds T14/R15/T16 to lights.html
+- Implemented: CayenneLPP, added initial support for LPP_UNIXTIME
+- Implemented: Cereal Proxy
+- Implemented: Custom icons for: Contact Door Contact Push On Push Off Door Lock Door Lock Inverted
+- Implemented: Devices Tab, Scene/Group log icon added
+- Implemented: EnOcean3 implemented EPP D2-03-0A
+- Implemented: EventSystem logging name when issuing thermostat SetPoint/Mode/Fan command
+- Implemented: EvoHome radiator Valve Value to Pushers InfluxDB worker
+- Implemented: Experimental support for WebSockets protocol
+- Implemented: Hardware setup, support /dev/serial/by-id on Linux
+- Implemented: InfluxDB Data push, support for Username/Password
+- Implemented: InfluxDB: added option for remote proxy path
+- Implemented: Logitech Media Server, added 'daphile' to the list of supported models
+- Implemented: Make Telegram notification silent when priority is negative
+- Implemented: Maverick 773 BBQ Temperature meter now using fixed ID as there is a new id generated between transmitter and controller every 15 minutes
+- Implemented: New Aqara Wireless Mini Switch
+- Implemented: New Hardware, The Things Network with CayenneLPP application(s)
+- Implemented: On/Off chart to Lights log
+- Implemented: OpenZWave, controller options for RetryTimeout, AssumeAwake and PerformReturnRoutes can now be set
+- Implemented: OpenZWave, handling 'kVAh' unit
+- Implemented: OpenZWave, support for Seismic Intensity sensor
+- Implemented: Report for Counter Incremental devices
+- Implemented: RFLink support for Blyss type (with high unit number)
+- Implemented: RFXCom Implemented Noise Level for Pro firmware
+- Implemented: RFXCom Lucci Fan DC
+- Implemented: RFXCom ProXL implementation
+- Implemented: RFXCom Supporting detection of Pro2, Pro XL1
+- Implemented: RFXMeter, Option to specify meter divider
+- Implemented: RFXMeter, Option to specify meter divider
+- Implemented: RTL433, Add support for wind_speed wind_gust wind_direction
+- Implemented: RTL433, added support for WGR800,PCR800
+- Implemented: RTL433, implemented Moisture sensor
+- Implemented: RTL433, support for sensors reporting in Fahrenheit
+- Implemented: Serial port for Freescale imx6 devices
+- Implemented: Support Aqara Vibration Sensor (v1)
+- Implemented: Support double click and long press feature for "Xiaomi Wireless Dual Wall Switch"
+- Implemented: Support for NodeOn Soft Button TSB-2-1-01
+- Implemented: Support for Westinghouse FAN
+- Implemented: Taiwanese language (big thanks to berry lin!)
+- Implemented: The Things Network, add GPS coordinate in Uservariable
+- Implemented: Time/Sun set/rise to events frame
+- Implemented: Timer Plan, duplicate option
+- Implemented: Touch Device unction
+- Implemented: Trend calculator (only for temperatures at the moment)
+- Implemented: Using MapQuest Geo API in settings
+- Implemented: Wind sensor without Temp and Chill
+- Implemented: Xiaomi Gateway Aqara Cube report battery status
+- Removed: LogitechMediaServer: HTTP timeout as a configurable option
+- Fixed: [Satel Integra] fix for Inetgra256 and allow to change names
+- Fixed: Anna to work with both firmwares
+- Fixed: Arilux
+- Fixed: Corrected water graph display
+- Fixed: Correcting cost calculation for P1 Meter reports with return usage
+- Fixed: Custom Icon upload message
+- Fixed: DarkSky possible wind-chill callsign issue
+- Fixed: Date parsing in Safari
+- Fixed: Devices tab, removed unnecessary zwave node id as this is part of the ID already
+- Fixed: Do not allow enters/returns in arguments (thanks to Fabio Carretto)
+- Fixed: Doorcontact, On/Off delay where hidden
+- Fixed: EvoHome hot water graphs
+- Fixed: Evohome SYNC bug
+- Fixed: Fan/RMP sensor
+- Fixed: Fix for running as non-privileged user
+- Fixed: Forecast button, displaying correct units
+- Fixed: Honeywell thermostat fixes and improvements
+- Fixed: I2C/BME280, Corrected oversampling
+- Fixed: Increased heartbeat_check timeout to 5 minutes (process rebooted while doing a large database operation (migration of a sensor))
+- Fixed: Kodi Notification setup display (hops)
+- Fixed: Light Log Set 'Level' for RGB switches
+- Fixed: MySensors IR switching
+- Fixed: Next Protect, removing Heat/US checks
+- Fixed: On/Off actions where incorrectly handled when setting the a RGB/W Color
+- Fixed: P1 Smart Meter report chart, limit number of decimals in tooltip
+- Fixed: Philips Hue, should work correctly now again
+- Fixed: Possible SQL Injection Vulnerability (Thanks to Fabio Carretto!)
+- Fixed: Prevent touch stcroll while using jQuery wheel color picker
+- Fixed: Put correct node name in button titles in association group view
+- Fixed: Python Plugin protocols now always use Parameters values for Username/Password during authentication rather than cached values
+- Fixed: Rain device for DarkSky
+- Fixed: Selector selected color
+- Fixed: Shared server via mydomoticz bug.
+- Fixed: Temp+Hum log button in devices view
+- Fixed: Temperature sorting in report
+- Fixed: timer where one part of the combination is even or odd week
+- Fixed: Xiaomi Gateway Lum issue
+- Fixed: Xiaomi, using correct (application default) way to update temp/hum/pressure
+- Fixed: YouLess meter report
+- Fixed: Various, see github, thanks to all who contributed!!
+- Updated: dzVents (version 2.4.18, See dzVents/documentation/history.md)
+- Updated: Event Editor
+- Updated: New Gui pages/code for Utility/Weather/Temperature/Devices/Hardware Setup
+- Updated: OZW configuration files
+- Updated: Translations
+- Updated: Weather Underground for use with the new API, option to specify Lat/Long as location
+- Updated: Winddelen, using new API URL now, and including some more sensors
+
+Version 4.9700 (June 23th 2018)
+- Implemented: Blockly, now possible to directly add/update Text devices
+- Implemented: Blockly: now possible to use expressions in debug messages like "My temperature is {{temperaturedevice[1234]}} degrees" (see http://www.domoticz.com/wiki/Events)
+- Implemented: Camera: support for HTTPS url's
+- Implemented: Comm5 SM-xxxx sensors support
+- Implemented: Command line option '-noupdates' to stop using the internal update functionality Corrected 'Proxy' settings in the settings page (missing element closing tag)
+- Implemented: Denkovi Smartden IP In (32) with LAN Interface
+- Implemented: Disabling the option to downgrade Domoticz and use a newer database (because of database migrations)
+- Implemented: Door Lock Inverted
+- Implemented: EcoCompteur device
+- Implemented: eHouse BMS / Home Automation System Integration
+- Implemented: Forcing appcache to be refreshed on every new build
+- Implemented: Functionality to allow Python Plugins to integrate with the Domoticz Security Panel
+- Implemented: HardwareMonitor monitor own process memory usage
+- Implemented: Honeywell Lyric thermostat
+- Implemented: I2C: support for MCP23017 (16bit I2C GPIO expander)
+- Implemented: Initial support for FS20
+- Implemented: KMTronic TCP Temperature hardware
+- Implemented: Langiage "Persian" (Big tankgs to "foademadi", "maziar.hafezi" and "reza.hadipour2002")
+- Implemented: Language "Albanian" (Big thanks to "arbenik")
+- Implemented: Language "Bosnian" (Big thanks to "Vedran")
+- Implemented: Language "Catalan" (Big thanks to "delfisastre")
+- Implemented: Logitech Media Server: Added option to remove unused nodes
+- Implemented: RFXtrx Lucci Fan DC implemented
+- Implemented: MQTT Push message on scene/group switch event
+- Implemented: MySensors: handling of I_INCLUSION_MODE message.
+- Implemented: MySensors: support for SmartSleep option (gateway 2.x)
+- Implemented: Netatmo: rssi support
+- Implemented: New Managed meter type
+- Implemented: OnkyoAVTCP: Add source selection, detection via NRIQSTN
+- Implemented: OpenWeatherMap: cloud sensor
+- Implemented: RFXCom: support for WIND7, RAIN7/RAIN8/RAIN9
+- Implemented: Rtl_433: support for wind sensors, HH and LL humidity values
+- Implemented: Selector Switch: correcting display for all UTF8 characters now
+- Implemented: Styles folder can have its own images folder to overwrite stock images
+- Implemented: Telegram notifications
+- Implemented: Voltage/Current for Armbian Kernal 4.14+
+- Implemented: Webserver: automatically reload SSL certificates and DH params3
+- Implemented: Xiaomi Aqara Cube
+- Implemented: ZWave node ID to log
+- Removed: NMA Notification system (the service has stopped)
+- Updated: Dzvents (version 2.4.6, See dzVents/documentation/history.md)
+- Updated: OenZWave driver and configuration files
+- Updated: Translation files
+- Updated: Various internal libraries (C++/WWW)
+- Changed: Floorplans now stored in database
+- Changed: Improved color dimmer support
+- Changed: Internal HUE/RGB/W/WW handling
+- Changed: Philips Hue: internal code
+- Fixed: Various, see github
+
+Version 3.8153 (July 30th 2017)
 - Fixed: Camera Editor, will now always refresh thumbnail in table
 - Fixed: Devices could become invisible when a scene/group was added to the 'hidden devices' room plan with the same idx
 - Fixed: JSon float/nan value, solved by upgrading JSonCPP
@@ -16,8 +324,9 @@ Version 3.7988 (July xth 2017)
 - Implemented: Added a new parameter to disable the logging of event script triggers 'Script event triggered: ...'
 - Implemented: AppLamp/LimitLess bridge V6.0 RGBW/RGBWW
 - Implemented: Blinds T1 till T13 new supports the Stop button
-- Implemented: Devices, Log icon for Blinds
 - Implemented: Blockly/Lua Set SetPoint option
+- Implemented: Devices, Log icon for Blinds
+- Implemented: Dummy Hardware, Temp+Baro
 - Implemented: Estonian Language support (big thanks to Kuido)
 - Implemented: EvohomeWeb support (Thanks to Gordon3!)
 - Implemented: General/Text sensor now able to be shared
@@ -51,6 +360,7 @@ Version 3.7988 (July xth 2017)
 - Implemented: Teleinfo : Added a switch indicating the current cost slot
 - Implemented: Timer Plan editor
 - Removed: Razberry ZWave handling method. Existing users need to migrate to OpenZWave
+- Integrated dzVents 2.0.0: See dzVents/documentation/history.md
 
 Version 3.5878 (November 10th 2016)
 - Fixes and various improvements
@@ -494,7 +804,7 @@ Version 2.2283 (February 21th 2015)
 - Implemented: OpenZWave, COMMAND_CLASS_COLOR_CONTROL (for o.a. Zipato RGBW) (needs to be accepted by openzwave yet)
 - Implemented: OpenZWave, Controller Node, option for Nightly Network Heal (disabled by default)
 - Implemented: OpenZWave, polling all multi_sensor values now (if polling enabled)
-- Implemented: OpenZWave, support for COMMAND_CLASS_THERMOSTAT_MODE and COMMAND_CLASS_THERMOSTAT_FAN_MODE 
+- Implemented: OpenZWave, support for COMMAND_CLASS_THERMOSTAT_MODE and COMMAND_CLASS_THERMOSTAT_FAN_MODE
 - Implemented: OpenZWave, when doing an Inclusion, "allow new hardware" is enabled for 5 minutes if disabled
 - Implemented: Option for Dummy device to create Ampere Sensor
 - Implemented: Option for Dummy device to create Switch Sensor
@@ -755,7 +1065,7 @@ Version 1.1680 (April 21th 2014)
 - Changed: Raspberry Pi temperature reporting intern. (Should save an extra return in the log output)
 - Changed: Temperatures are now valid till 380 degrees
 - Changed: Translation Language Loading
-- Changed: ZWave, Power sensors that does not transmit usage, now used as power instead of usage 
+- Changed: ZWave, Power sensors that does not transmit usage, now used as power instead of usage
 - Fixed: custom_light_icons json request (now reporting status OK)
 - Fixed: Daylight Saving values for 29-march-2014
 - Fixed: Fibaro Wall Plug (fgwpe) config
@@ -1098,7 +1408,7 @@ Version 1.666 (May 28th 2013)
 Version 1.607 (May 11th 2013)
 - Implemented: 5th parameter for light/switch script (full status descriptor)
 - Implemented: Date/Time/SunSet/SunRise on every page (except mobile browsers will have only SunSet/SunRise)
-- Implemented: Device type Blinds (Safy / RollerTrol / Hasta / A-OK RF01,AC114 / RAEX /  Media Mount)
+- Implemented: Device type Blinds (Safy / RollerTrol / Hasta / A-OK RF01,AC114 / RAEX / Media Mount)
 - Implemented: Email connection timeout (10 seconds)
 - Implemented: Email Notifications
 - Implemented: Email notifications now send in background
@@ -1135,7 +1445,7 @@ Version 1.607 (May 11th 2013)
 - Fixed: Push On delayed Off was deleted from queue, and was being send
 - Fixed: PushOn button Off delay time now handles values above 255
 - Fixed: RFXtrx USB mode option in hardware settings, will now return to dashboard
-- Fixed: Scene 'Learn' code option can now be used with already known switches 
+- Fixed: Scene 'Learn' code option can now be used with already known switches
 - Fixed: Scenes with a Push On type switch will now only send the On command to this switch
 - Fixed: Switch Lights Off (Dimmer) now does not update slider position
 - Fixed: TE923 (Weather stations) hardware can now be shared
@@ -1201,7 +1511,7 @@ Version 1.412 (April 1th 2013)
 - Implemented: Sensors that are not received within xx minutes are not logged any more (one hour now, will be in the settings)
 - Implemented: SQLite faster journal/update mode on non-windows systems
 - Implemented: Started working on support for the CM180i
-- Implemented: TE932Tool (USB 433Mhz Weather Station, Hideki weather station like IROX Pro X, Mebus TE923 or TFA Nexus) 
+- Implemented: TE932Tool (USB 433MHz Weather Station, Hideki weather station like IROX Pro X, Mebus TE923 or TFA Nexus)
 - Implemented: Temperature (large) icons now represents global temperature index
 - Implemented: Temperature/Weather sensors now display their main value in large font
 - Implemented: Unix update script
@@ -1243,7 +1553,7 @@ Version 1.0.9 (February 17th 2013)
 - Implemented: OWL113 option to display in Ampere/Usage
 - Implemented: P1 smart meter will update once a minute, or when usage difference is greater than 40 Watt
 - Implemented: P1 Smart meter, Gas value now send when changed, or every 5 minutes
-- Implemented: Serial port auto reconnect option 
+- Implemented: Serial port auto reconnect option
 - Implemented: Smoke Detector Off image
 - Implemented: temp_hum Rubicson/IW008T/TX95
 - Changed: Manual Add light switch types are now complete

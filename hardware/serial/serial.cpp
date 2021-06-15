@@ -1,12 +1,14 @@
 /* Copyright 2012 William Woodall and John Harrison */
 #include "stdafx.h"
 #include <algorithm>
+#include <utility>
 
-#if !defined(_WIN32) && !defined(__OpenBSD__) && !defined(__FreeBSD__)
+#ifdef __sun
 # include <alloca.h>
 #endif
+#include <stdlib.h>
 
-#if defined (__MINGW32__)
+#if defined (__MINGW32__) || defined (__NetBSD__)
 # define alloca __builtin_alloca
 #endif
 
@@ -41,11 +43,11 @@ public:
   ~ScopedReadLock() {
     this->pimpl_->readUnlock();
   }
-private:
   // Disable copy constructors
-  ScopedReadLock(const ScopedReadLock&);
-  const ScopedReadLock& operator=(ScopedReadLock);
+  ScopedReadLock(const ScopedReadLock &) = delete;
+  const ScopedReadLock &operator=(ScopedReadLock) = delete;
 
+private:
   SerialImpl *pimpl_;
 };
 
@@ -57,10 +59,11 @@ public:
   ~ScopedWriteLock() {
     this->pimpl_->writeUnlock();
   }
-private:
   // Disable copy constructors
-  ScopedWriteLock(const ScopedWriteLock&);
-  const ScopedWriteLock& operator=(ScopedWriteLock);
+  ScopedWriteLock(const ScopedWriteLock &) = delete;
+  const ScopedWriteLock &operator=(ScopedWriteLock) = delete;
+
+private:
   SerialImpl *pimpl_;
 };
 
@@ -158,8 +161,7 @@ Serial::read (size_t size)
   return buffer;
 }
 
-size_t
-Serial::readline (string &buffer, size_t size, string eol)
+size_t Serial::readline(string &buffer, size_t size, const string &eol)
 {
   ScopedReadLock lock(this->pimpl_);
   size_t eol_len = eol.length ();
@@ -185,16 +187,14 @@ Serial::readline (string &buffer, size_t size, string eol)
   return read_so_far;
 }
 
-string
-Serial::readline (size_t size, string eol)
+string Serial::readline(size_t size, const string &eol)
 {
   std::string buffer;
-  this->readline (buffer, size, eol);
+  this->readline(buffer, size, eol);
   return buffer;
 }
 
-vector<string>
-Serial::readlines (size_t size, string eol)
+vector<string> Serial::readlines(size_t size, const string &eol)
 {
   ScopedReadLock lock(this->pimpl_);
   std::vector<std::string> lines;

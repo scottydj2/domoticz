@@ -6,11 +6,11 @@
 #include "../main/localtime_r.h"
 #include "P1MeterBase.h"
 #include "hardwaretypes.h"
+
 #include <string>
 #include <algorithm>
 #include <iostream>
-#include <boost/bind.hpp>
-
+#include <boost/exception/diagnostic_information.hpp>
 #include <ctime>
 
 //#define DEBUG_KMTronic
@@ -22,40 +22,35 @@ KMTronicSerial::KMTronicSerial(const int ID, const std::string& devname)
 	m_HwdID=ID;
 	m_szSerialPort=devname;
 	m_iBaudRate = 9600;
-	m_stoprequested = false;
 	m_iQueryState = 0;
 	m_retrycntr = RETRY_DELAY - 2;
 	m_bHaveReceived = false;
 }
 
-KMTronicSerial::~KMTronicSerial()
-{
-
-}
-
 bool KMTronicSerial::StartHardware()
 {
+	RequestStart();
+
 	m_bDoInitialQuery = true;
 	m_iQueryState = 0;
 
 	m_retrycntr = RETRY_DELAY-2; //will force reconnect first thing
 
 	//Start worker thread
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&KMTronicSerial::Do_Work, this)));
-
-	return (m_thread != NULL);
-
-	return true;
+	m_bIsStarted = true;
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
+	return (m_thread != nullptr);
 }
 
 bool KMTronicSerial::StopHardware()
 {
-	m_stoprequested = true;
-	if (m_thread != NULL)
+	if (m_thread)
+	{
+		RequestStop();
 		m_thread->join();
-	// Wait a while. The read thread might be reading. Adding this prevents a pointer error in the async serial class.
-	sleep_milliseconds(10);
-	terminate();
+		m_thread.reset();
+	}
 	m_bIsStarted = false;
 	return true;
 }
@@ -63,21 +58,21 @@ bool KMTronicSerial::StopHardware()
 void KMTronicSerial::Do_Work()
 {
 	int sec_counter = 0;
-	while (!m_stoprequested)
+
+	Log(LOG_STATUS, "Worker started...");
+
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
 		sec_counter++;
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat=mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 
-		if (m_stoprequested)
-			break;
 		if (!isOpen())
 		{
 			if (m_retrycntr == 0)
 			{
-				_log.Log(LOG_STATUS, "KMTronic: retrying in %d seconds...", RETRY_DELAY);
+				Log(LOG_STATUS, "retrying in %d seconds...", RETRY_DELAY);
 			}
 			m_retrycntr++;
 			if (m_retrycntr >= RETRY_DELAY)
@@ -90,7 +85,9 @@ void KMTronicSerial::Do_Work()
 			}
 		}
 	}
-	_log.Log(LOG_STATUS, "KMTronic: Serial Worker stopped...");
+	terminate();
+
+	Log(LOG_STATUS, "Worker stopped...");
 }
 
 bool KMTronicSerial::OpenSerialDevice()
@@ -98,7 +95,7 @@ bool KMTronicSerial::OpenSerialDevice()
 	//Try to open the Serial Port
 	try
 	{
-		_log.Log(LOG_STATUS, "KMTronic: Using serial port: %s", m_szSerialPort.c_str());
+		Log(LOG_STATUS, "Using serial port: %s", m_szSerialPort.c_str());
 #ifndef WIN32
 		openOnlyBaud(
 			m_szSerialPort,
@@ -117,9 +114,9 @@ bool KMTronicSerial::OpenSerialDevice()
 	}
 	catch (boost::exception & e)
 	{
-		_log.Log(LOG_ERROR, "KMTronic: Error opening serial port!");
+		Log(LOG_ERROR, "Error opening serial port!");
 #ifdef _DEBUG
-		_log.Log(LOG_ERROR, "-----------------\n%s\n-----------------", boost::diagnostic_information(e).c_str());
+		Log(LOG_ERROR, "-----------------\n%s\n-----------------", boost::diagnostic_information(e).c_str());
 #else
 		(void)e;
 #endif
@@ -127,19 +124,18 @@ bool KMTronicSerial::OpenSerialDevice()
 	}
 	catch (...)
 	{
-		_log.Log(LOG_ERROR, "KMTronic: Error opening serial port!!!");
+		Log(LOG_ERROR, "Error opening serial port!!!");
 		return false;
 	}
 	m_bIsStarted = true;
 	m_bufferpos = 0;
-	setReadCallback(boost::bind(&KMTronicSerial::readCallback, this, _1, _2));
+	setReadCallback([this](auto d, auto l) { readCallback(d, l); });
 	sOnConnected(this);
 	return true;
 }
 
 void KMTronicSerial::readCallback(const char *data, size_t len)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
 	if (!m_bIsStarted)
 		return;
 
@@ -183,7 +179,7 @@ void KMTronicSerial::GetRelayStates()
 	bool bIs485 = false;
 	for (int iBoard = 0; iBoard < 6; iBoard++)
 	{
-		SendBuf[1] = 0xA1 + iBoard;
+		SendBuf[1] = (uint8_t)(0xA1 + iBoard);
 		if (WriteInt(SendBuf, 3, true))
 		{
 			bIs485 = true;
@@ -202,8 +198,8 @@ void KMTronicSerial::GetRelayStates()
 					std::stringstream sstr;
 					int iRelay = (iBoard * 8) + ii + 1;
 					sstr << "Board" << int(iBoard + 1) << " - " << int(ii + 1);
-					SendSwitch(iRelay, 1, 255, bIsOn, 0, sstr.str());
-					_log.Log(LOG_STATUS, "KMTronic: %s = %s", sstr.str().c_str(), (bIsOn) ? "On" : "Off");
+					SendSwitch(iRelay, 1, 255, bIsOn, 0, sstr.str(), m_Name);
+					Debug(DEBUG_HARDWARE, "%s = %s", sstr.str().c_str(), (bIsOn) ? "On" : "Off");
 					if (iRelay > m_TotRelais)
 						m_TotRelais = iRelay;
 				}
@@ -238,8 +234,8 @@ void KMTronicSerial::GetRelayStates()
 			std::stringstream sstr;
 			int iRelay = (ii + 1);
 			sstr << "Relay " << iRelay;
-			SendSwitch(iRelay, 1, 255, bIsOn, 0, sstr.str());
-			_log.Log(LOG_STATUS, "KMTronic: %s = %s", sstr.str().c_str(), (bIsOn) ? "On" : "Off");
+			SendSwitch(iRelay, 1, 255, bIsOn, 0, sstr.str(), m_Name);
+			Debug(DEBUG_HARDWARE, "%s = %s", sstr.str().c_str(), (bIsOn) ? "On" : "Off");
 			if (iRelay > m_TotRelais)
 				m_TotRelais = iRelay;
 		}
@@ -251,7 +247,7 @@ void KMTronicSerial::GetRelayStates()
 	SendBuf[2] = 0x03;
 	for (ii = 0; ii < Max_KMTronic_Relais; ii++)
 	{
-		SendBuf[1] = ii+1;
+		SendBuf[1] = (uint8_t)(ii+1);
 		if (WriteInt(SendBuf, 3,true))
 		{
 			if (m_bufferpos == 3)
@@ -266,15 +262,15 @@ void KMTronicSerial::GetRelayStates()
 					std::stringstream sstr;
 					int iRelay = ii + 1;
 					sstr << "Relay " << iRelay;
-					SendSwitch(iRelay, 1, 255, bIsOn, 0, sstr.str());
-					_log.Log(LOG_STATUS, "KMTronic: %s = %s", sstr.str().c_str(), (bIsOn) ? "On" : "Off");
+					SendSwitch(iRelay, 1, 255, bIsOn, 0, sstr.str(), m_Name);
+					Log(LOG_STATUS, "%s = %s", sstr.str().c_str(), (bIsOn) ? "On" : "Off");
 					if (iRelay > m_TotRelais)
 						m_TotRelais = iRelay;
 				}
 			}
 			else
 			{
-				_log.Log(LOG_ERROR, "KMTronic: Invalid data received!");
+				Log(LOG_ERROR, "Invalid data received!");
 			}
 		}
 	}

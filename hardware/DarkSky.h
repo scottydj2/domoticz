@@ -1,25 +1,24 @@
 #pragma once
 
 #include "DomoticzHardware.h"
-#include <iostream>
 
 class CDarkSky : public CDomoticzHardwareBase
 {
-public:
-	CDarkSky(const int ID, const std::string &APIKey, const std::string &Location);
-	~CDarkSky(void);
-	bool WriteToHardware(const char *pdata, const unsigned char length);
+      public:
+	CDarkSky(int ID, const std::string &APIKey, const std::string &Location);
+	~CDarkSky() override = default;
+	bool WriteToHardware(const char *pdata, unsigned char length) override;
 	std::string GetForecastURL();
-private:
-	std::string m_APIKey;
-	std::string m_Location;
-	volatile bool m_stoprequested;
-	boost::shared_ptr<boost::thread> m_thread;
 
+      private:
 	void Init();
-	bool StartHardware();
-	bool StopHardware();
+	bool StartHardware() override;
+	bool StopHardware() override;
 	void Do_Work();
 	void GetMeterDetails();
-};
 
+      private:
+	std::string m_APIKey;
+	std::string m_Location;
+	std::shared_ptr<std::thread> m_thread;
+};

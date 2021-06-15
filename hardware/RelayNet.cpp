@@ -117,19 +117,13 @@
 //===========================================================================
 
 RelayNet::RelayNet(const int ID, const std::string &IPAddress, const unsigned short usIPPort, const std::string &username, const std::string &password, const bool pollInputs, const bool pollRelays, const int pollInterval, const int inputCount, const int relayCount) :
-m_szIPAddress(IPAddress),
-m_username(CURLEncode::URLEncode(username)),
-m_password(CURLEncode::URLEncode(password)),
-m_stoprequested(false),
-m_reconnect(false)
+	m_szIPAddress(IPAddress),
+	m_username(CURLEncode::URLEncode(username)),
+	m_password(CURLEncode::URLEncode(password))
 {
-	m_stoprequested = false;
 	m_setup_devices = true;
 	m_bOutputLog = false;
-	m_bDoRestart = false;
 	m_bIsStarted = false;
-	m_username = username;
-	m_password = password;
 	m_HwdID = ID;
 	m_usIPPort = usIPPort;
 	m_poll_inputs = pollInputs;
@@ -158,30 +152,23 @@ m_reconnect(false)
 
 //===========================================================================
 
-RelayNet::~RelayNet(void)
-{
-}
-
-//===========================================================================
-
 bool RelayNet::StartHardware()
 {
+	RequestStart();
+
 	bool bOk = false;;
-	m_stoprequested = false;
-	m_reconnect = false;
 	m_bIsStarted = false;
 	m_setup_devices = false;
 	m_bIsStarted = false;
-	m_stoprequested = false;
-	m_bDoRestart = false;
 	m_retrycntr = RETRY_DELAY; //force connect the next first time
 
 	if (m_input_count || m_relay_count)
 	{
-		m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&RelayNet::Do_Work, this)));
+		m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+		SetThreadNameInt(m_thread->native_handle());
 	}
 
-	if (m_thread != NULL)
+	if (m_thread)
 	{
 		bOk = true;
 		m_bIsStarted=true;
@@ -194,27 +181,14 @@ bool RelayNet::StartHardware()
 
 bool RelayNet::StopHardware()
 {
-	m_stoprequested = true;
-
-	if (isConnected())
+	if (m_thread)
 	{
-		disconnect();
+		RequestStop();
+		m_thread->join();
+		m_thread.reset();
 	}
-
-	try 
-	{
-		if (m_thread)
-		{
-			m_thread->join();
-		}
-	}
-	catch (...)
-	{
-	}
-
 	m_bIsStarted = false;
-
-	_log.Log(LOG_STATUS, "RelayNet: Relay Module disconnected %s", m_szIPAddress.c_str());
+	Log(LOG_STATUS, "Relay Module disconnected %s", m_szIPAddress.c_str());
 
 	return true;
 }
@@ -223,26 +197,17 @@ bool RelayNet::StopHardware()
 
 bool RelayNet::WriteToHardware(const char *pdata, const unsigned char length)
 {
-	bool bOk = true;
-
 #if RELAYNET_USE_HTTP
-
-	bOk = WriteToHardwareHttp(pdata);
-
+	return WriteToHardwareHttp(pdata);
 #else
-
-	bOk = WriteToHardwareTcp(pdata);
-
+	return WriteToHardwareTcp(pdata);
 #endif
-
-	return bOk;
 }
 
 //===========================================================================
 
 void RelayNet::Do_Work()
 {
-	bool bFirstTime = true;
 	int sec_counter = 0;
 
 	/*  Init  */
@@ -250,34 +215,18 @@ void RelayNet::Do_Work()
 
 	if (m_poll_inputs || m_poll_relays)
 	{
-		_log.Log(LOG_STATUS, "RelayNet: %d-second poller started (%s)", m_poll_interval, m_szIPAddress.c_str());
+		Log(LOG_STATUS, "%d-second poller started (%s)", m_poll_interval, m_szIPAddress.c_str());
 	}
-
-	while (!m_stoprequested)
+	connect(m_szIPAddress,m_usIPPort);
+	/*  One second sleep  */
+	while (!IsStopRequested(1000))
 	{
-		/*  One second sleep  */
-		sleep_seconds(1);
 		sec_counter++;
 
 		/*  Heartbeat maintenance  */
 		if (sec_counter  % 10 == 0)
 		{
-			m_LastHeartbeat = mytime(NULL);
-		}
-
-		/*  Connection maintenance  */
-		if (bFirstTime)
-		{
-			bFirstTime = false;
-			connect(m_szIPAddress,m_usIPPort);
-		}
-		else
-		{
-			if ((m_bDoRestart) && (sec_counter % 30 == 0))
-			{
-				connect(m_szIPAddress,m_usIPPort);
-			}
-			update();
+			m_LastHeartbeat = mytime(nullptr);
 		}
 
 		/*  Prevent disconnect request by Relay Module  */
@@ -293,11 +242,12 @@ void RelayNet::Do_Work()
 			TcpRequestRelaycardDump();
 		}
 	}
+	terminate();
 
 	/*  Done  */
 	if (m_poll_inputs || m_poll_relays)
 	{
-		_log.Log(LOG_STATUS, "RelayNet: %d-second poller stopped (%s)", m_poll_interval, m_szIPAddress.c_str());
+		Log(LOG_STATUS, "%d-second poller stopped (%s)", m_poll_interval, m_szIPAddress.c_str());
 	}
 }
 
@@ -360,12 +310,9 @@ void RelayNet::SetupDevices()
 
 			if (result.empty())
 			{
-				_log.Log(LOG_STATUS, "RelayNet: Create %s/Relay%i", m_szIPAddress.c_str(), relayNumber);
+				Log(LOG_STATUS, "Create %s/Relay%i", m_szIPAddress.c_str(), relayNumber);
 
-				m_sql.safe_query(
-					"INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue) "
-					"VALUES (%d, '%q', %d, %d, %d, %d, 0, 12, 255, '%q', 0, ' ')",
-					m_HwdID, szIdx, relayNumber, pTypeLighting2, sTypeAC, int(STYPE_OnOff), "Relay");
+				m_sql.InsertDevice(m_HwdID, szIdx, relayNumber, pTypeLighting2, sTypeAC, STYPE_OnOff, 0, " ", "Relay");
 			}
 		}
 	}
@@ -378,12 +325,9 @@ void RelayNet::SetupDevices()
 
 			if (result.empty())
 			{
-				_log.Log(LOG_STATUS, "RelayNet: Create %s/Input%i", m_szIPAddress.c_str(), inputNumber);
+				Log(LOG_STATUS, "Create %s/Input%i", m_szIPAddress.c_str(), inputNumber);
 
-				m_sql.safe_query(
-					"INSERT INTO DeviceStatus (HardwareID, DeviceID, Unit, Type, SubType, SwitchType, Used, SignalLevel, BatteryLevel, Name, nValue, sValue) "
-					"VALUES (%d,'%q',%d, %d, %d, %d, 0, 12, 255, '%q', 0, ' ')",
-					m_HwdID, szIdx, 100+inputNumber, pTypeLighting2, sTypeAC, int(STYPE_Contact), "Input");
+				m_sql.InsertDevice(m_HwdID, szIdx, 100 + inputNumber, pTypeLighting2, sTypeAC, int(STYPE_Contact), 0, " ", "Input");
 			}
 		}
 	}
@@ -395,10 +339,7 @@ void RelayNet::TcpRequestRelaycardDump()
 {
 	std::string	sRequest = "DUMP\r\n";
 
-	if (isConnected())
-	{
-		write(sRequest);
-	}
+	write(sRequest);
 }
 
 //===========================================================================
@@ -407,10 +348,7 @@ void RelayNet::KeepConnectionAlive()
 {
 	std::string	sRequest = "R1\r\n";
 
-	if (isConnected())
-	{
-		write(sRequest);
-	}
+	write(sRequest);
 }
 
 //===========================================================================
@@ -439,10 +377,7 @@ void RelayNet::TcpGetSetRelay(int RelayNumber, bool SetRelay, bool State)
 	sndbuf[2] = '\r';
 	sndbuf[3] = '\n';
 
-	if (isConnected())
-	{
-		write((const unsigned char*)&sndbuf[0], (size_t) sizeof(sndbuf));
-	}
+	write((const unsigned char*)&sndbuf[0], (size_t) sizeof(sndbuf));
 }
 
 void RelayNet::SetRelayState(int RelayNumber, bool State)
@@ -504,7 +439,7 @@ void RelayNet::UpdateDomoticzInput(int InputNumber, bool State)
 
 	result = m_sql.safe_query("SELECT Name,nValue,sValue FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q') AND (Unit==%d)", m_HwdID, szIdx, 100 + InputNumber);
 
-	if ((!result.empty()) && (result.size()>0))
+	if ((!result.empty()) && (!result.empty()))
 	{
 		std::vector<std::string> sd=result[0];
 		bool dbState = true;
@@ -536,7 +471,7 @@ void RelayNet::UpdateDomoticzInput(int InputNumber, bool State)
 		m_Packet.LIGHTING2.seqnbr++;
 
 		/* send packet to Domoticz */
-		sDecodeRXMessage(this, (const unsigned char *)&m_Packet.LIGHTING2, "Input", 255);
+		sDecodeRXMessage(this, (const unsigned char *)&m_Packet.LIGHTING2, "Input", 255, m_Name.c_str());
 	}
 }
 
@@ -556,7 +491,7 @@ void RelayNet::UpdateDomoticzRelay(int RelayNumber, bool State)
 
 	result = m_sql.safe_query("SELECT Name,nValue,sValue FROM DeviceStatus WHERE (HardwareID==%d) AND (DeviceID=='%q') AND (Unit==%d)", m_HwdID, szIdx, RelayNumber);
 
-	if ((!result.empty()) && (result.size()>0))
+	if ((!result.empty()) && (!result.empty()))
 	{
 		std::vector<std::string> sd = result[0];
 		bool dbState = true;
@@ -588,7 +523,7 @@ void RelayNet::UpdateDomoticzRelay(int RelayNumber, bool State)
 		m_Packet.LIGHTING2.seqnbr++;
 
 		/* send packet to Domoticz */
-		sDecodeRXMessage(this, (const unsigned char *)&m_Packet.LIGHTING2, "Relay", 255);
+		sDecodeRXMessage(this, (const unsigned char *)&m_Packet.LIGHTING2, "Relay", 255, m_Name.c_str());
 	}
 }
 
@@ -596,7 +531,6 @@ void RelayNet::UpdateDomoticzRelay(int RelayNumber, bool State)
 
 void RelayNet::ProcessRelaycardDump(char* Dump)
 {
-	char	cTemp[16];
 	std::string sDump;
 	std::string sChkstr;
 
@@ -605,18 +539,16 @@ void RelayNet::ProcessRelaycardDump(char* Dump)
 
 	if (!m_skip_relay_update && m_relay_count && (m_poll_relays || m_setup_devices))
 	{
-		for (int i=1; i <= m_relay_count ; i++)
+		for (int i = 1; i <= m_relay_count; i++)
 		{
-			snprintf(&cTemp[0], sizeof(cTemp), "RELAYON %d", i);
-			sChkstr = cTemp;
+			sChkstr = fmt::format("RELAYON {}", i);
 
 			if(sDump.find(sChkstr) != std::string::npos)
 			{
 				UpdateDomoticzRelay(i, true);
 			}
 
-			snprintf(&cTemp[0], sizeof(cTemp), "RELAYOFF %d", i);
-			sChkstr = cTemp;
+			sChkstr = fmt::format("RELAYOFF {}", i);
 
 			if (sDump.find(sChkstr) != std::string::npos)
 			{
@@ -629,16 +561,14 @@ void RelayNet::ProcessRelaycardDump(char* Dump)
 	{
 		for (int i = 1; i <= m_input_count; i++)
 		{
-			snprintf(&cTemp[0], sizeof(cTemp), "IH %d", i);
-			sChkstr = cTemp;
+			sChkstr = fmt::format("IH {}", i);
 
 			if (sDump.find(sChkstr) != std::string::npos)
 			{
 				UpdateDomoticzInput(i, true);
 			}
 
-			snprintf(&cTemp[0], sizeof(cTemp), "IL %d", i);
-			sChkstr = cTemp;
+			sChkstr = fmt::format("IL {}", i);
 
 			if (sDump.find(sChkstr) != std::string::npos)
 			{
@@ -673,8 +603,8 @@ void RelayNet::ParseData(const unsigned char *pData, int Len)
 
 //===========================================================================
 //
-//	Alternate way of turning relays on/off using HTTP. 
-//	Currently not used. 
+//	Alternate way of turning relays on/off using HTTP.
+//	Currently not used.
 //
 bool RelayNet::WriteToHardwareHttp(const char *pdata)
 {
@@ -702,7 +632,6 @@ bool RelayNet::WriteToHardwareHttp(const char *pdata)
 		std::stringstream 			sLogin;
 		std::string 				sAccessToken;
 		std::stringstream			sURL;
-		std::stringstream 			szPostData;
 		std::vector<std::string>	ExtraHeaders;
 		std::string 				sResult;
 		int 						relay = pSen->LIGHTING2.unitcode;
@@ -724,20 +653,20 @@ bool RelayNet::WriteToHardwareHttp(const char *pdata)
 			sLogin << m_username << ":" << m_password;
 
 			/* Generate UnEncrypted base64 Basic Authorization for username/password and add result to ExtraHeaders */
-			sAccessToken = base64_encode((const unsigned char *)(sLogin.str().c_str()), strlen(sLogin.str().c_str()));
+			sAccessToken = base64_encode(sLogin.str());
 			ExtraHeaders.push_back("Authorization: Basic " + sAccessToken);
 
 			/* Send URL to relay module and check return status */
 			if (!HTTPClient::POST(sURL.str(), sPostData, ExtraHeaders, sResult))
 			{
-				_log.Log(LOG_ERROR, "RelayNet: [1] Error sending relay command to: %s", m_szIPAddress.c_str());
+				Log(LOG_ERROR, "[1] Error sending relay command to: %s", m_szIPAddress.c_str());
 				return false;
 			}
 
 			/* Look for "saida" in response, if present all should be ok */
 			if (sResult.find("saida") == std::string::npos)
 			{
-				_log.Log(LOG_ERROR, "RelayNet: [2] Error sending relay command to: %s", m_szIPAddress.c_str());
+				Log(LOG_ERROR, "[2] Error sending relay command to: %s", m_szIPAddress.c_str());
 				return false;
 			}
 
@@ -754,8 +683,7 @@ bool RelayNet::WriteToHardwareHttp(const char *pdata)
 //
 void RelayNet::OnConnect()
 {
-	_log.Log(LOG_STATUS, "RelayNet: Connected to Relay Module %s", m_szIPAddress.c_str());
-	m_reconnect = false;
+	Log(LOG_STATUS, "Connected to Relay Module %s", m_szIPAddress.c_str());
 	m_bIsStarted = true;
 }
 
@@ -763,31 +691,14 @@ void RelayNet::OnConnect()
 
 void RelayNet::OnDisconnect()
 {
-	_log.Log(LOG_STATUS, "RelayNet: Relay Module disconnected %s, reconnect", m_szIPAddress.c_str());
-
-	if (!m_stoprequested)
-	{
-		m_reconnect = true;
-	}
+	Log(LOG_STATUS, "Relay Module disconnected %s, reconnect", m_szIPAddress.c_str());
 }
 
 //===========================================================================
 
 void RelayNet::OnData(const unsigned char *pData, size_t length)
 {
-	boost::lock_guard<boost::mutex> l(readQueueMutex);
-
-	if (!m_stoprequested)
-	{
-		ParseData(pData, length);
-	}
-}
-
-//===========================================================================
-
-void RelayNet::OnError(const std::exception e)
-{
-	_log.Log(LOG_ERROR, "RelayNet: Error: %s", e.what());
+	ParseData(pData, length);
 }
 
 //===========================================================================
@@ -800,15 +711,15 @@ void RelayNet::OnError(const boost::system::error_code& error)
 		(error == boost::asio::error::host_unreachable) ||
 		(error == boost::asio::error::timed_out))
 	{
-		_log.Log(LOG_ERROR, "RelayNet: OnError: Can not connect to: %s:%ld", m_szIPAddress.c_str(), m_usIPPort);
+		Log(LOG_ERROR, "OnError: Can not connect to: %s:%d", m_szIPAddress.c_str(), m_usIPPort);
 	}
 	else if ((error == boost::asio::error::eof) || (error == boost::asio::error::connection_reset))
 	{
-		_log.Log(LOG_STATUS, "RelayNet: OnError: Connection reset!");
+		Log(LOG_STATUS, "OnError: Connection reset!");
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "RelayNet: OnError: %s", error.message().c_str());
+		Log(LOG_ERROR, "OnError: %s", error.message().c_str());
 	}
 }
 

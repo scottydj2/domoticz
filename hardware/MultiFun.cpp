@@ -10,7 +10,6 @@
 #include "../main/mainworker.h"
 #include "../main/SQLHelper.h"
 #include "csocket.h"
-#include <boost/assign.hpp>
 
 #ifdef _DEBUG
 	#define DEBUG_MultiFun
@@ -21,100 +20,103 @@
 
 #define round(a) ( int ) ( a + .5 )
 
-typedef struct sensorType {
-	std::string name;
-	float div;
-} Model;
-
 #define sensorsCount 16
 #define registersCount 34
 
-typedef std::map<int, std::string> dictionary;
+using dictionary = std::vector<std::pair<int, std::string>>;
 
-static dictionary alarmsType = boost::assign::map_list_of
-(0x0001, "BOILER STOP - FIRING FAILURE")
-(0x0004, "BOILER OVERHEATING")
-(0x0010, "EXTINUISHED BOILER")
-(0x0080, "DAMAGED SENSOR BOILER")
-(0x0100, "DAMAGED SENSOR FEEDER")
-(0x0200, "FLUE GAS SENSOR")
-(0x0400, "FAILURE - LOCK WORKS");
-
-static dictionary warningsType = boost::assign::map_list_of
-(0x0001, "No external sensor")
-(0x0002, "No room sensor 1")
-(0x0004, "Wrong version supply module program")
-(0x0008, "No return sensor")
-(0x0010, "No room sensor 2")
-(0x0020, "Open flap")
-(0x0040, "Thermal protection has tripped");
-
-static dictionary devicesType = boost::assign::map_list_of
-(0x0001, "C.H.1 PUMP")
-(0x0002, "C.H.2 PUMP")
-(0x0004, "RESERVE PUMP")
-(0x0008, "H.W.U.PUMP")
-(0x0010, "CIRCULATION PUMP")
-(0x0020, "PUFFER PUMP")
-(0x0040, "MIXER C.H.1 Close")
-(0x0080, "MIXER C.H.1 Open")
-(0x0100, "MIXER C.H.2 Close")
-(0x0200, "MIXER C.H.2 Open");
-
-static dictionary statesType = boost::assign::map_list_of
-(0x0001, "STOP")
-(0x0002, "Firing")
-(0x0004, "Heating")
-(0x0008, "Maintain")
-(0x0010, "Blanking");
-
-static sensorType sensors[sensorsCount] =
-{
-	{ "External", 10.0 },
-	{ "Room 1", 10.0 },
-	{ "Room 2", 10.0 },
-	{ "Return", 10.0 },
-	{ "C.H.1", 10.0 },
-	{ "C.H.2", 10.0 },
-	{ "H.W.U.", 10.0 },
-	{ "Heat", 1.0 },
-	{ "Flue gas", 10.0 },
-	{ "Module", 10.0 },
-	{ "Boiler", 10.0 },
-	{ "Feeder", 10.0 },
-	{ "Calculated Boiler", 10.0 },
-	{ "Calculated H.W.U.", 10.0 },
-	{ "Calculated C.H.1", 10.0 },
-	{ "Calculated C.H.2", 10.0 }
+const auto alarmsType = dictionary{
+	{ 0x0001, "BOILER STOP - FIRING FAILURE" }, //
+	{ 0x0004, "BOILER OVERHEATING" },	    //
+	{ 0x0010, "EXTINUISHED BOILER" },	    //
+	{ 0x0080, "DAMAGED SENSOR BOILER" },	    //
+	{ 0x0100, "DAMAGED SENSOR FEEDER" },	    //
+	{ 0x0200, "FLUE GAS SENSOR" },		    //
+	{ 0x0400, "FAILURE - LOCK WORKS" },	    //
 };
 
-static dictionary quickAccessType = boost::assign::map_list_of
-	(0x0001, "Shower")
-	(0x0002, "Party")
-	(0x0004, "Comfort")
-	(0x0008, "Airing")
-	(0x0010, "Frost protection");
+const auto warningsType = dictionary{
+	{ 0x0001, "No external sensor" },		   //
+	{ 0x0002, "No room sensor 1" },			   //
+	{ 0x0004, "Wrong version supply module program" }, //
+	{ 0x0008, "No return sensor" },			   //
+	{ 0x0010, "No room sensor 2" },			   //
+	{ 0x0020, "Open flap" },			   //
+	{ 0x0040, "Thermal protection has tripped" },	   //
+};
 
-static std::string errors[4] =
-{
+constexpr std::array<std::pair<int, const char *>, 10> devicesType{
+	{
+		{ 0x0001, "C.H.1 PUMP" },	 //
+		{ 0x0002, "C.H.2 PUMP" },	 //
+		{ 0x0004, "RESERVE PUMP" },	 //
+		{ 0x0008, "H.W.U.PUMP" },	 //
+		{ 0x0010, "CIRCULATION PUMP" },	 //
+		{ 0x0020, "PUFFER PUMP" },	 //
+		{ 0x0040, "MIXER C.H.1 Close" }, //
+		{ 0x0080, "MIXER C.H.1 Open" },	 //
+		{ 0x0100, "MIXER C.H.2 Close" }, //
+		{ 0x0200, "MIXER C.H.2 Open" },	 //
+	}					 //
+};
+
+const auto statesType = dictionary{
+	{ 0x0001, "STOP" },	//
+	{ 0x0002, "Firing" },	//
+	{ 0x0004, "Heating" },	//
+	{ 0x0008, "Maintain" }, //
+	{ 0x0010, "Blanking" }, //
+};
+
+constexpr std::array<std::pair<const char *, float>, 16> sensors{
+	{
+		{ "External", 10.0F },		//
+		{ "Room 1", 10.0F },		//
+		{ "Room 2", 10.0F },		//
+		{ "Return", 10.0F },		//
+		{ "C.H.1", 10.0F },		//
+		{ "C.H.2", 10.0F },		//
+		{ "H.W.U.", 10.0F },		//
+		{ "Heat", 1.0F },		//
+		{ "Flue gas", 10.0F },		//
+		{ "Module", 10.0F },		//
+		{ "Boiler", 10.0F },		//
+		{ "Feeder", 10.0F },		//
+		{ "Calculated Boiler", 10.0F }, //
+		{ "Calculated H.W.U.", 10.0F }, //
+		{ "Calculated C.H.1", 10.0F },	//
+		{ "Calculated C.H.2", 10.0F },	//
+	}					//
+};
+
+constexpr std::array<std::pair<int, const char *>, 5> quickAccessType{
+	{
+		{ 0x0001, "Shower" },		//
+		{ 0x0002, "Party" },		//
+		{ 0x0004, "Comfort" },		//
+		{ 0x0008, "Airing" },		//
+		{ 0x0010, "Frost protection" }, //
+	}					//
+};
+
+constexpr std::array<const char *, 4> errors{
 	"Incorrect function code",
 	"Incorrect register address",
 	"Incorrect number of registers",
-	"Server error"
+	"Server error",
 };
 
-MultiFun::MultiFun(const int ID, const std::string &IPAddress, const unsigned short IPPort) :
-	m_IPPort(IPPort),
-	m_IPAddress(IPAddress),
-	m_stoprequested(false),
-	m_socket(NULL),
-	m_LastAlarms(0),
-	m_LastWarnings(0),
-	m_LastDevices(0),
-	m_LastState(0),
-	m_LastQuickAccess(0)
+MultiFun::MultiFun(const int ID, const std::string &IPAddress, const unsigned short IPPort)
+	: m_IPPort(IPPort)
+	, m_IPAddress(IPAddress)
+	, m_socket(nullptr)
+	, m_LastAlarms(0)
+	, m_LastWarnings(0)
+	, m_LastDevices(0)
+	, m_LastState(0)
+	, m_LastQuickAccess(0)
 {
-	_log.Log(LOG_STATUS, "MultiFun: Create instance");
+	Log(LOG_STATUS, "Create instance");
 	m_HwdID = ID;
 
 	m_isSensorExists[0] = false;
@@ -125,36 +127,36 @@ MultiFun::MultiFun(const int ID, const std::string &IPAddress, const unsigned sh
 
 MultiFun::~MultiFun()
 {
-	_log.Log(LOG_STATUS, "MultiFun: Destroy instance");
+	Log(LOG_STATUS, "Destroy instance");
 }
 
 bool MultiFun::StartHardware()
 {
+	RequestStart();
+
 #ifdef DEBUG_MultiFun
-	_log.Log(LOG_STATUS, "MultiFun: Start hardware");
+	Log(LOG_STATUS, "Start hardware");
 #endif
 
-	m_thread = boost::shared_ptr<boost::thread>(new boost::thread(boost::bind(&MultiFun::Do_Work, this)));
+	m_thread = std::make_shared<std::thread>([this] { Do_Work(); });
+	SetThreadNameInt(m_thread->native_handle());
 	m_bIsStarted = true;
 	sOnConnected(this);
-	return (m_thread != NULL);
+	return (m_thread != nullptr);
 }
 
 bool MultiFun::StopHardware()
 {
 #ifdef DEBUG_MultiFun
-	_log.Log(LOG_STATUS, "MultiFun: Stop hardware");
+	Log(LOG_STATUS, "Stop hardware");
 #endif
 
-	m_stoprequested = true;
-	
 	if (m_thread)
 	{
+		RequestStop();
 		m_thread->join();
+		m_thread.reset();
 	}
-
-	DestroySocket();
-
 	m_bIsStarted = false;
 	return true;
 }
@@ -162,22 +164,19 @@ bool MultiFun::StopHardware()
 void MultiFun::Do_Work()
 {
 #ifdef DEBUG_MultiFun
-	_log.Log(LOG_STATUS, "MultiFun: Start work");
+	Log(LOG_STATUS, "Start work");
 #endif
 
 	int sec_counter = MULTIFUN_POLL_INTERVAL;
 
 	bool firstTime = true;
 
-	while (!m_stoprequested)
+	while (!IsStopRequested(1000))
 	{
-		sleep_seconds(1);
-		if (m_stoprequested)
-			break;
 		sec_counter++;
 
 		if (sec_counter % 12 == 0) {
-			m_LastHeartbeat = mytime(NULL);
+			m_LastHeartbeat = mytime(nullptr);
 		}
 
 		if (sec_counter % MULTIFUN_POLL_INTERVAL == 0)
@@ -186,13 +185,14 @@ void MultiFun::Do_Work()
 			GetRegisters(firstTime);
 			firstTime = false;
 #ifdef DEBUG_MultiFun
-			_log.Log(LOG_STATUS, "MultiFun: fetching changed data");
+			Log(LOG_STATUS, "fetching changed data");
 #endif
 		}
 	}
+	DestroySocket();
 }
 
-bool MultiFun::WriteToHardware(const char *pdata, const unsigned char length)
+bool MultiFun::WriteToHardware(const char *pdata, const unsigned char /*length*/)
 {
 	const tRBUF *output = reinterpret_cast<const tRBUF*>(pdata);
 
@@ -204,12 +204,12 @@ bool MultiFun::WriteToHardware(const char *pdata, const unsigned char length)
 		{
 			int change;
 			if (general->cmnd == gswitch_sOn)
-			{ 
-				change = m_LastQuickAccess | (1 << (general->unitcode - 1));
+			{
+				change = m_LastQuickAccess | (general->unitcode);
 			}
 			else
-			{ 
-				change = m_LastQuickAccess & ~(1 << (general->unitcode - 1));
+			{
+				change = m_LastQuickAccess & ~(general->unitcode);
 			}
 
 			unsigned char buffer[100];
@@ -221,14 +221,14 @@ bool MultiFun::WriteToHardware(const char *pdata, const unsigned char length)
 			cmd[4] = 0x00; // length (2 bytes)
 			cmd[5] = 0x09;
 			cmd[6] = 0xFF; // unit id
-			cmd[7] = 0x10; // function code 
+			cmd[7] = 0x10; // function code
 			cmd[8] = 0x00; // start address (2 bytes)
 			cmd[9] = 0x21;
 			cmd[10] = 0x00; // number of sensor (2 bytes)
 			cmd[11] = 0x01;
 			cmd[12] = 0x02; // number of bytes
 			cmd[13] = 0x00;
-			cmd[14] = change;
+			cmd[14] = (uint8_t)change;
 
 			int ret = SendCommand(cmd, 15, buffer, true);
 			if (ret == 4)
@@ -259,14 +259,14 @@ bool MultiFun::WriteToHardware(const char *pdata, const unsigned char length)
 		cmd[4] = 0x00; // length (2 bytes)
 		cmd[5] = 0x09;
 		cmd[6] = 0xFF; // unit id
-		cmd[7] = 0x10; // function code 
+		cmd[7] = 0x10; // function code
 		cmd[8] = 0x00; // start address (2 bytes)
 		cmd[9] = therm->id2;
 		cmd[10] = 0x00; // number of sensor (2 bytes)
-		cmd[11] = 0x01; 
+		cmd[11] = 0x01;
 		cmd[12] = 0x02; // number of bytes
 		cmd[13] = 0x00;
-		cmd[14] = calculatedTemp;
+		cmd[14] = (uint8_t)calculatedTemp;
 
 		int ret = SendCommand(cmd, 15, buffer, true);
 		if (ret == 4)
@@ -278,7 +278,7 @@ bool MultiFun::WriteToHardware(const char *pdata, const unsigned char length)
 
 bool MultiFun::ConnectToDevice()
 {
-	if (m_socket != NULL)
+	if (m_socket != nullptr)
 		return true;
 
 	m_socket = new csocket();
@@ -287,32 +287,25 @@ bool MultiFun::ConnectToDevice()
 
 	if (m_socket->getState() != csocket::CONNECTED)
 	{
-		_log.Log(LOG_ERROR, "MultiFun: Unable to connect to specified IP Address on specified Port (%s:%d)", m_IPAddress.c_str(), m_IPPort);
+		Log(LOG_ERROR, "Unable to connect to specified IP Address on specified Port (%s:%d)", m_IPAddress.c_str(), m_IPPort);
 		DestroySocket();
 		return false;
 	}
 
-	_log.Log(LOG_STATUS, "MultiFun: connected to %s:%ld", m_IPAddress.c_str(), m_IPPort);
+	Log(LOG_STATUS, "connected to %s:%d", m_IPAddress.c_str(), m_IPPort);
 
 	return true;
 }
 
 void MultiFun::DestroySocket()
 {
-	if (m_socket != NULL)
+	if (m_socket != nullptr)
 	{
 #ifdef DEBUG_MultiFun
-		_log.Log(LOG_STATUS, "MultiFun: destroy socket");
+		Log(LOG_STATUS, "destroy socket");
 #endif
-		try
-		{
-			delete m_socket;
-		}
-		catch (...)
-		{
-		}
-
-		m_socket = NULL;
+		delete m_socket;
+		m_socket = nullptr;
 	}
 }
 
@@ -327,7 +320,7 @@ void MultiFun::GetTemperatures()
 	cmd[4] = 0x00; // length (2 bytes)
 	cmd[5] = 0x06;
 	cmd[6] = 0xFF; // unit id
-	cmd[7] = 0x04; // function code 
+	cmd[7] = 0x04; // function code
 	cmd[8] = 0x00; // start address (2 bytes)
 	cmd[9] = 0x00;
 	cmd[10] = 0x00; // number of sensor (2 bytes)
@@ -338,7 +331,7 @@ void MultiFun::GetTemperatures()
 	{
 		if ((ret != 1 + sensorsCount * 2) || (buffer[0] != sensorsCount * 2))
 		{
-			_log.Log(LOG_ERROR, "MultiFun: Receive wrong number of bytes");
+			Log(LOG_ERROR, "Receive wrong number of bytes");
 		}
 		else
 		{
@@ -346,11 +339,11 @@ void MultiFun::GetTemperatures()
 			{
 				unsigned int val = (buffer[i * 2 + 1] & 127) * 256 + buffer[i * 2 + 2];
 				int signedVal = (((buffer[i * 2 + 1] & 128) >> 7) * -32768) + val;
-				float temp = signedVal / sensors[i].div;
+				float temp = signedVal / sensors[i].second;
 
 				if ((temp > -39) && (temp < 1000))
-				{			
-					SendTempSensor(i, 255, temp, sensors[i].name);
+				{
+					SendTempSensor(i, 255, temp, sensors[i].first);
 				}
 				if ((i == 1) || (i == 2))
 				{
@@ -362,7 +355,7 @@ void MultiFun::GetTemperatures()
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "MultiFun: Receive info about temperatures failed");
+		Log(LOG_ERROR, "Receive info about temperatures failed");
 	}
 }
 
@@ -377,7 +370,7 @@ void MultiFun::GetRegisters(bool firstTime)
 	cmd[4] = 0x00; // length (2 bytes)
 	cmd[5] = 0x06;
 	cmd[6] = 0xFF; // unit id
-	cmd[7] = 0x03; // function code 
+	cmd[7] = 0x03; // function code
 	cmd[8] = 0x00; // start address (2 bytes)
 	cmd[9] = 0x00;
 	cmd[10] = 0x00; // number of sensor (2 bytes)
@@ -388,7 +381,7 @@ void MultiFun::GetRegisters(bool firstTime)
 	{
 		if ((ret != 1 + registersCount * 2) || (buffer[0] != registersCount * 2))
 		{
-			_log.Log(LOG_ERROR, "MultiFun: Receive wrong number of bytes");
+			Log(LOG_ERROR, "Receive wrong number of bytes");
 		}
 		else
 		{
@@ -399,18 +392,16 @@ void MultiFun::GetRegisters(bool firstTime)
 				{
 				case 0x00:
 				{
-					dictionary::iterator it = alarmsType.begin();
-					for (; it != alarmsType.end(); it++)
+					for (const auto &alarm : alarmsType)
 					{
-						if (((*it).first & value) && !((*it).first & m_LastAlarms))
+						if ((alarm.first & value) && !(alarm.first & m_LastAlarms))
 						{
-							SendTextSensor(1, 0, 255, (*it).second, "Alarms");
+							SendTextSensor(1, 0, 255, alarm.second, "Alarms");
 						}
-						else
-							if (!((*it).first & value) && ((*it).first & m_LastAlarms))
-							{
-								SendTextSensor(1, 0, 255, "End - " + (*it).second, "Alarms");
-							}
+						else if (!(alarm.first & value) && (alarm.first & m_LastAlarms))
+						{
+							SendTextSensor(1, 0, 255, "End - " + alarm.second, "Alarms");
+						}
 					}
 					if (((m_LastAlarms != 0) != (value != 0)) || firstTime)
 					{
@@ -419,20 +410,18 @@ void MultiFun::GetRegisters(bool firstTime)
 					m_LastAlarms = value;
 					break;
 				}
-				case 0x01: 
+				case 0x01:
 				{
-					dictionary::iterator it = warningsType.begin();
-					for (; it != warningsType.end(); it++)
+					for (const auto &warning : warningsType)
 					{
-						if (((*it).first & value) && !((*it).first & m_LastWarnings))
+						if ((warning.first & value) && !(warning.first & m_LastWarnings))
 						{
-							SendTextSensor(1, 1, 255, (*it).second, "Warnings");
+							SendTextSensor(1, 1, 255, warning.second, "Warnings");
 						}
-						else
-							if (!((*it).first & value) && ((*it).first & m_LastWarnings))
-							{
-								SendTextSensor(1, 1, 255, "End - " + (*it).second, "Warnings");
-							}
+						else if (!(warning.first & value) && (warning.first & m_LastWarnings))
+						{
+							SendTextSensor(1, 1, 255, "End - " + warning.second, "Warnings");
+						}
 					}
 					if (((m_LastWarnings != 0) != (value != 0)) || firstTime)
 					{
@@ -443,18 +432,16 @@ void MultiFun::GetRegisters(bool firstTime)
 				}
 				case 0x02:
 				{
-					dictionary::iterator it = devicesType.begin();
-					for (; it != devicesType.end(); it++)
+					for (const auto &device : devicesType)
 					{
-						if (((*it).first & value) && !((*it).first & m_LastDevices))
+						if ((device.first & value) && !(device.first & m_LastDevices))
 						{
-							SendGeneralSwitchSensor(2, 255, true, (*it).second.c_str(), (*it).first);
+							SendGeneralSwitch(2, device.first, 255, true, 0, device.second, m_Name);
 						}
-						else
-							if (!((*it).first & value) && ((*it).first & m_LastDevices))
-							{
-								SendGeneralSwitchSensor(2, 255, false, (*it).second.c_str(), (*it).first);
-							}
+						else if (!(device.first & value) && (device.first & m_LastDevices))
+						{
+							SendGeneralSwitch(2, device.first, 255, false, 0, device.second, m_Name);
+						}
 					}
 					m_LastDevices = value;
 
@@ -463,19 +450,17 @@ void MultiFun::GetRegisters(bool firstTime)
 					break;
 				}
 				case 0x03:
-				{ 
-					dictionary::iterator it = statesType.begin();
-					for (; it != statesType.end(); it++)
+				{
+					for (const auto &state : statesType)
 					{
-						if (((*it).first & value) && !((*it).first & m_LastState))
+						if ((state.first & value) && !(state.first & m_LastState))
 						{
-							SendTextSensor(3, 1, 255, (*it).second, "State");
+							SendTextSensor(3, 1, 255, state.second, "State");
 						}
-						else
-							if (!((*it).first & value) && ((*it).first & m_LastState))
-							{
-								SendTextSensor(3, 1, 255, "End - " + (*it).second, "State");
-							}
+						else if (!(state.first & value) && (state.first & m_LastState))
+						{
+							SendTextSensor(3, 1, 255, "End - " + state.second, "State");
+						}
 					}
 					m_LastState = value;
 
@@ -496,7 +481,7 @@ void MultiFun::GetRegisters(bool firstTime)
 						temp = (float)((value & 0x0FFF) * 0.2);
 					}
 					m_isWeatherWork[i - 0x1C] = (value & 0x8000) == 0x8000;
-					SendSetPointSensor(i, 1, 1, temp, name);
+					SendSetPointSensor((uint8_t)i, 1, 1, temp, name);
 					break;
 				}
 
@@ -515,29 +500,27 @@ void MultiFun::GetRegisters(bool firstTime)
 					if (m_isSensorExists[i - 0x1F])
 					{
 						float temp = (float)((value & 0x0FFF) * 0.2);
-						SendSetPointSensor(i, 1, 1, temp, name);
+						SendSetPointSensor((uint8_t)i, 1, 1, temp, name);
 					}
 					else
 					{
-						//SendGeneralSwitchSensor(i, 255, value, name, 1); // TODO - send level (dimmer)
-					}					
+						//SendGeneralSwitch(i, 1, 255, state, level, name); // TODO - send level (dimmer)
+					}
 					break;
 				}
 
 				case 0x21:
 				{
-					dictionary::iterator it = quickAccessType.begin();
-					for (; it != quickAccessType.end(); it++)
+					for (const auto &access : quickAccessType)
 					{
-						if (((*it).first & value) && !((*it).first & m_LastQuickAccess))
+						if ((access.first & value) && !(access.first & m_LastQuickAccess))
 						{
-							SendGeneralSwitchSensor(0x21, 255, true, (*it).second.c_str(), (*it).first);
+							SendGeneralSwitch(0x21, access.first, 255, true, 0, access.second, m_Name);
 						}
-						else
-							if ((!((*it).first & value) && ((*it).first & m_LastQuickAccess)) || firstTime)
-							{
-								SendGeneralSwitchSensor(0x21, 255, false, (*it).second.c_str(), (*it).first);
-							}
+						else if ((!(access.first & value) && (access.first & m_LastQuickAccess)) || firstTime)
+						{
+							SendGeneralSwitch(0x21, access.first, 255, false, 0, access.second, m_Name);
+						}
 					}
 					m_LastQuickAccess = value;
 					break;
@@ -550,7 +533,7 @@ void MultiFun::GetRegisters(bool firstTime)
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "MultiFun: Receive info about registers failed");
+		Log(LOG_ERROR, "Receive info about registers failed");
 	}
 }
 
@@ -562,20 +545,20 @@ int MultiFun::SendCommand(const unsigned char* cmd, const unsigned int cmdLength
 		return -1;
 	}
 
-	boost::lock_guard<boost::mutex> lock(m_mutex);
+	std::lock_guard<std::mutex> lock(m_mutex);
 
 	unsigned char databuffer[BUFFER_LENGHT];
 	int ret = -1;
 
-	if (m_socket->write((char*)cmd, cmdLength) != cmdLength)
+	if (m_socket->write((char*)cmd, cmdLength) != (int)cmdLength)
 	{
-		_log.Log(LOG_ERROR, "MultiFun: Send command failed");
+		Log(LOG_ERROR, "Send command failed");
 		DestroySocket();
 		return -1;
 	}
 
 	bool bIsDataReadable = true;
-	m_socket->canRead(&bIsDataReadable, 3.0f);
+	m_socket->canRead(&bIsDataReadable, 3.0F);
 	if (bIsDataReadable)
 	{
 		memset(databuffer, 0, BUFFER_LENGHT);
@@ -584,7 +567,7 @@ int MultiFun::SendCommand(const unsigned char* cmd, const unsigned int cmdLength
 
 	if ((ret <= 0) || (ret >= BUFFER_LENGHT))
 	{
-		_log.Log(LOG_ERROR, "MultiFun: no data received");
+		Log(LOG_ERROR, "no data received");
 		return -1;
 	}
 
@@ -601,27 +584,22 @@ int MultiFun::SendCommand(const unsigned char* cmd, const unsigned int cmdLength
 				}
 				answerLength = ret - 8; // answer = frame - prefix
 
-				if ((int)databuffer[4] * 256 + (int)databuffer[5] == answerLength + 2)
+				if ((int)databuffer[4] * 256 + (int)databuffer[5] == (unsigned char)(answerLength + 2))
 				{
-					if (write)
-					{
-						if (cmd[8] == databuffer[8] && cmd[9] == databuffer[9] && cmd[10] == databuffer[10] && cmd[11] == databuffer[11])
-						{
-							return answerLength;
-						}
-						else
-						{
-							_log.Log(LOG_ERROR, "MultiFun: bad response after write");
-						}
-					}
-					else
+					if (!write)
 					{
 						return answerLength;
 					}
+
+					if (cmd[8] == databuffer[8] && cmd[9] == databuffer[9] && cmd[10] == databuffer[10] && cmd[11] == databuffer[11])
+					{
+						return answerLength;
+					}
+					Log(LOG_ERROR, "bad response after write");
 				}
 				else
 				{
-					_log.Log(LOG_ERROR, "MultiFun: bad size of frame");
+					Log(LOG_ERROR, "bad size of frame");
 				}
 			}
 			else
@@ -629,26 +607,26 @@ int MultiFun::SendCommand(const unsigned char* cmd, const unsigned int cmdLength
 				{
 					if (databuffer[8] >= 1 && databuffer[8] <= 4)
 					{
-						_log.Log(LOG_ERROR, "MultiFun: Receive error (%s)", errors[databuffer[8] - 1].c_str());
+						Log(LOG_ERROR, "Receive error (%s)", errors[databuffer[8] - 1]);
 					}
 					else
 					{
-						_log.Log(LOG_ERROR, "MultiFun: Receive unknown error");
+						Log(LOG_ERROR, "Receive unknown error");
 					}
 				}
 				else
 				{
-					_log.Log(LOG_ERROR, "MultiFun: Receive error (unknown function code)");
+					Log(LOG_ERROR, "Receive error (unknown function code)");
 				}
 		}
 		else
 		{
-				_log.Log(LOG_ERROR, "MultiFun: received bad frame prefix");
+				Log(LOG_ERROR, "received bad frame prefix");
 		}
 	}
 	else
 	{
-		_log.Log(LOG_ERROR, "MultiFun: received frame is too short.");
+		Log(LOG_ERROR, "received frame is too short.");
 		DestroySocket();
 	}
 
